@@ -58,22 +58,28 @@ minWndwHeight = (minRectArm*rect_numy)/hgtPerc
 nodes = []
 randNodes = []
 randIndex = []
+rect_locx = []
+rect_locy = []
 
 
 def get_nodes():
     # Getting nodal points of the main rectangle,
     # left to right and then top to bottom.
     nodes.clear()
+    rect_locx.clear()
+    rect_locy.clear()
     for row in range(rect_numy):
         for column in range(rect_numx):
             # Location of the unit rectangles.
-            rect_loc = (rect_locx, rect_locy) = (
-                ((wndwCenter[0]-(rect_numx*rect_arm/2))
-                 + column*rect_arm),
-                ((wndwCenter[1]-(rect_numy*rect_arm/2))
-                 + row*rect_arm))
-            # Overwriting global variable, nodes.
+            rect_loc = (((wndwCenter[0]-(rect_numx*rect_arm/2))
+                         + column*rect_arm),
+                        ((wndwCenter[1]-(rect_numy*rect_arm/2))
+                         + row*rect_arm))
+            # Overwriting global variable, nodes,
+            # rect_locx, rect_locy.
             nodes.append(rect_loc)
+            rect_locx.append(rect_loc[0])
+            rect_locy.append(rect_loc[1])
 
 
 def draw_nodes():
@@ -85,9 +91,10 @@ def draw_nodes():
                            3)
     for index in randIndex:
         pygame.draw.circle(screenSurface, RED,
-                           (int(round(nodes[index][0], 0)),
-                            int(round(nodes[index][1], 0))),
-                           8)
+                           (int(round((rect_locx[index] +
+                                       (rect_arm/2)), 0)),
+                            int(round((rect_locy[index] +
+                                       (rect_arm/2)), 0))), 8)
 
 
 def get_randNodes():
@@ -167,7 +174,8 @@ def draw_mineNum():
                 str(num), numFont,
                 numColor[num if (num < 4) else 4])
             # Setting text rectangle's center.
-            textRect.center = nodes[i]
+            textRect.center = ((rect_locx[i]+(rect_arm/2)),
+                               (rect_locy[i]+(rect_arm/2)))
             # Drawing text.
             screenSurface.blit(textSurf, textRect)
         # Index increment.
@@ -178,6 +186,22 @@ def text_object(text, font, color):
     # Returns text surface and rectangle.
     textSurf = font.render(text, True, color)
     return textSurf, textSurf.get_rect()
+
+
+def draw_rect():
+    # Rectangle color options.
+    rect_color = ("#8ccc14", "#a2e345")
+    row = 0
+    for node in nodes:
+        i = nodes.index(node)
+        # Rectangle color switching purpose.
+        if (i % rect_numx) == 0:
+            row = row+1
+        pygame.draw.rect(screenSurface,
+                         pygame.Color(rect_color[(i+row) % 2]),
+                         (rect_locx[i], rect_locy[i],
+                          (rect_arm+1), (rect_arm+1)))
+        # (rect_arm+1): '1' added to remove pixel gap.
 
 
 # Setting game as running (true).
@@ -203,7 +227,7 @@ while isRunning():
     event = pygame.event.wait()
     if event.type == pygame.VIDEORESIZE:
         # Window size.
-        wndwSize = wndwWidth, wndwHeight \
+        wndwSize = wndwWidth, wndwHeight\
             = event.w, event.h
         # Limiting minimum window size.
         if wndwWidth < minWndwWidth:
@@ -227,7 +251,8 @@ while isRunning():
         get_randNodes()
         mine_count()
         firstTime = False
-        print(mine_num)
+        print(2 % 2)
+    draw_rect()
     draw_nodes()
     draw_mineNum()
     screen.flip()

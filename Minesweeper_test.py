@@ -82,19 +82,24 @@ def get_nodes():
             rect_locy.append(rect_loc[1])
 
 
-def draw_nodes():
+def draw_mines():
+    # Drawing adjusted nodes as mines.
     # Drawing nodes.
-    for node in nodes:
-        pygame.draw.circle(screenSurface, BLACK,
-                           (int(round(node[0], 0)),
-                            int(round(node[1], 0))),
-                           3)
+    # """ for node in nodes:
+    #     pygame.draw.circle(screenSurface, BLACK,
+    #                        (int(round(node[0], 0)),
+    #                         int(round(node[1], 0))),
+    #                        3) """
+    # Mine size adjustable with window size.
+    mine_size = round(rect_arm*0.25)
+    mine_color = pygame.Color("#e15a19")
     for index in randIndex:
-        pygame.draw.circle(screenSurface, RED,
+        pygame.draw.circle(screenSurface, mine_color,
                            (int(round((rect_locx[index] +
                                        (rect_arm/2)), 0)),
                             int(round((rect_locy[index] +
-                                       (rect_arm/2)), 0))), 8)
+                                       (rect_arm/2)), 0))),
+                           mine_size)
 
 
 def get_randNodes():
@@ -165,8 +170,13 @@ def draw_mineNum():
     # Index.
     i = 0
     # Setting font & font color.
-    numFont = pygame.font.SysFont("Arial", 30, True)
-    numColor = [WHITE, BLUE, GREEN, RED, BLACK]
+    # font size adjustable with window size.
+    fontSize = round(rect_arm*0.70)
+    numFont = pygame.font.SysFont("Arial", fontSize, True)
+    # Color index corresponds to mine number at the spot.
+    numColor = [WHITE, pygame.Color("#3232d2"),
+                pygame.Color("#649619"),
+                pygame.Color("#e11919"), BLACK]
     for num in mine_num:
         if num != 0:
             # Getting text surface and rectangle.
@@ -188,9 +198,28 @@ def text_object(text, font, color):
     return textSurf, textSurf.get_rect()
 
 
-def draw_rect():
+def draw_field():
+    # Draw top level 'green' rectangles as minefield.
     # Rectangle color options.
     rect_color = ("#8ccc14", "#a2e345")
+    row = 0
+    for node in nodes:
+        i = nodes.index(node)
+        # Rectangle color switching purpose.
+        if (i % rect_numx) == 0:
+            row = row+1
+        pygame.draw.rect(screenSurface,
+                         pygame.Color(rect_color[(i+row) % 2]),
+                         (rect_locx[i], rect_locy[i],
+                          (rect_arm+1), (rect_arm+1)))
+        # (rect_arm+1): '1' added to remove pixel gap.
+
+
+def draw_hiddenField():
+    # Draw lower level rectangles as hidden field.
+    # Rectangle color options.
+    # "#edc095", "#b99777"
+    rect_color = ("#ffdcb4", "#d2b99b")
     row = 0
     for node in nodes:
         i = nodes.index(node)
@@ -252,9 +281,10 @@ while isRunning():
         mine_count()
         firstTime = False
         print(2 % 2)
-    draw_rect()
-    draw_nodes()
+    draw_hiddenField()
+    draw_mines()
     draw_mineNum()
+    # draw_field()
     screen.flip()
 
 pygame.quit()

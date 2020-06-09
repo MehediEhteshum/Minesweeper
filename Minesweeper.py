@@ -54,12 +54,15 @@ wndwCenter = (wndwWidth/2, wndwHeight/2)
 minWndwWidth = (minRectArm*rect_numx)/wdthPerc
 minWndwHeight = (minRectArm*rect_numy)/hgtPerc
 
-# Initializing node parameters.
+# Initializing node parameters
+# (all nodes, random nodes & indices, unit rectangle location,
+# clicked cell's nodal index).
 nodes = []
 randNodes = []
 randIndex = []
 rect_locx = []
 rect_locy = []
+clickedCell = []
 
 
 def get_nodes():
@@ -127,17 +130,17 @@ def mine_count():
         # Right rectangle.
         calc_mines(index+1, index)
         # Top rectangle.
-        calc_mines(index-10, index)
+        calc_mines((index-rect_numx), index)
         # Bottom rectangle.
-        calc_mines(index+10, index)
+        calc_mines((index+rect_numx), index)
         # Top-left rectangle.
-        calc_mines(index-11, index)
+        calc_mines((index-(rect_numx+1)), index)
         # Top-right rectangle.
-        calc_mines(index-9, index)
+        calc_mines((index-(rect_numx-1)), index)
         # Bottom-left rectangle.
-        calc_mines(index+9, index)
+        calc_mines((index+(rect_numx-1)), index)
         # Bottom-right rectangle.
-        calc_mines(index+11, index)
+        calc_mines((index+(rect_numx+1)), index)
 
 
 def calc_mines(index, mine_index):
@@ -226,11 +229,61 @@ def draw_hiddenField():
         # Rectangle color switching purpose.
         if (i % rect_numx) == 0:
             row = row+1
-        pygame.draw.rect(screenSurface,
-                         pygame.Color(rect_color[(i+row) % 2]),
-                         (rect_locx[i], rect_locy[i],
-                          (rect_arm+1), (rect_arm+1)))
+        if i in clickedCell:
+            pygame.draw.rect(screenSurface, pygame.Color
+                             (rect_color[(i+row) % 2]),
+                             (rect_locx[i], rect_locy[i],
+                              (rect_arm+1), (rect_arm+1)))
         # (rect_arm+1): '1' added to remove pixel gap.
+
+
+def mouse_click():
+    # Detecting and classifying different mouse clicks.
+    if event.button == 1:
+        mouse_LClick()
+
+
+def mouse_LClick():
+    # Left click operations.
+    # Mouse click position.
+    x, y = pygame.mouse.get_pos()
+    # Field range.
+    x_min = round(wndwCenter[0]-(rect_numx*rect_arm/2)-1)
+    x_max = round(wndwCenter[0]+(rect_numx*rect_arm/2)-1)
+    y_min = round(wndwCenter[1]-(rect_numy*rect_arm/2)-1)
+    y_max = round(wndwCenter[1]+(rect_numy*rect_arm/2)-1)
+    # Minus '1' for pixel gap adjustment.
+    # Detecting click within the field range.
+    if (x_min <= x <= x_max) and (y_min <= y <= y_max):
+        for node in nodes:
+            # Unit cell range.
+            xn_min, xn_max = (node[0]-1), (node[0]+rect_arm-1)
+            yn_min, yn_max = (node[1]-1), (node[1]+rect_arm-1)
+            # Minus '1' for pixel gap adjustment.
+            # Detecting clicked unit cell by nodal index.
+            if (xn_min <= x <= xn_max) and \
+                    (yn_min <= y <= yn_max):
+                i = nodes.index(node)
+                # Detecting mined cell click.
+                if i in randIndex:
+                    minedCell_click()
+                # Detecting empty cell click.
+                if (i not in randIndex) and \
+                        (mine_num[i] == 0):
+                    emptyCell_click()
+                if i not in clickedCell:
+                    clickedCell.append(i)
+
+
+def emptyCell_click():
+    # Operations if clicked empty cell.
+    print("You clicked empty cell.")
+
+
+def minedCell_click():
+    # Operations if clicked mine.
+    for i in randIndex:
+        clickedCell.append(i)
 
 
 # Setting game as running (true).
@@ -254,6 +307,10 @@ event = pygame.event.wait()
 while isRunning():
     # """ pygame.event.pump() """
     event = pygame.event.wait()
+    # Checking mouse click (down).
+    if event.type == pygame.MOUSEBUTTONDOWN:
+        mouse_click()
+    # Checking window size.
     if event.type == pygame.VIDEORESIZE:
         # Window size.
         wndwSize = wndwWidth, wndwHeight\
@@ -280,11 +337,11 @@ while isRunning():
         get_randNodes()
         mine_count()
         firstTime = False
-        print(2 % 2)
+        print('One time ' + str(mine_num))
+    draw_field()
     draw_hiddenField()
     draw_mines()
     draw_mineNum()
-    # draw_field()
     screen.flip()
 
 pygame.quit()

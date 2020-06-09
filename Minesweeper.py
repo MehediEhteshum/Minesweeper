@@ -86,7 +86,7 @@ def get_nodes():
 
 
 def draw_mines():
-    # Drawing adjusted nodes as mines.
+    # Drawing adjusted nodes as mines when clicked.
     # Drawing nodes.
     # """ for node in nodes:
     #     pygame.draw.circle(screenSurface, BLACK,
@@ -97,12 +97,14 @@ def draw_mines():
     mine_size = round(rect_arm*0.25)
     mine_color = pygame.Color("#e15a19")
     for index in randIndex:
-        pygame.draw.circle(screenSurface, mine_color,
-                           (int(round((rect_locx[index] +
-                                       (rect_arm/2)), 0)),
-                            int(round((rect_locy[index] +
-                                       (rect_arm/2)), 0))),
-                           mine_size)
+        # Drawing mines when clicked.
+        if index in clickedCell:
+            pygame.draw.circle(screenSurface, mine_color,
+                               (int(round((rect_locx[index] +
+                                           (rect_arm/2)), 0)),
+                                int(round((rect_locy[index] +
+                                           (rect_arm/2)), 0))),
+                               mine_size)
 
 
 def get_randNodes():
@@ -123,7 +125,7 @@ mine_num = [0]*(rect_numx*rect_numy)
 
 def mine_count():
     # Calculating mine numbers at nodes.
-    # Calculating mine numbers for 8 surrounding nodes.
+    # Calculating mine numbers for 8 adjacent nodes.
     for index in randIndex:
         # Left rectangle.
         calc_mines(index-1, index)
@@ -145,22 +147,24 @@ def mine_count():
 
 def calc_mines(index, mine_index):
     # Overwriting global variable, mine_num.
-    # """ Checking nodes
-    # which are within the range and
-    # not in the randNodes list. """
+    # """ Checking node
+    # if it is within the range and
+    # not in the mine list, randNodes. """
     if (index not in randIndex) and \
             (0 <= index < (rect_numx*rect_numy)):
-        # which are not on the 2 side boundaries.
+        # When mine cell is not on the 2 side boundaries.
         if ((mine_index+1) % rect_numx != 1) and \
                 ((mine_index+1) % rect_numx != 0):
             mine_num[index] = mine_num[index] + 1
-        # which are on the left boundary.
+        # When mine cell is on the left boundary,
+        # declude its left side cells.
         elif ((mine_index+1) % rect_numx == 1) and \
             (index != (mine_index-1)) and \
             (index != (mine_index-(rect_numx+1))) and \
                 (index != (mine_index+(rect_numx-1))):
             mine_num[index] = mine_num[index] + 1
-        # which are on the right boundary.
+        # When mine cell is on the right boundary,
+        # declude its right side cells.
         elif ((mine_index+1) % rect_numx == 0) and \
             (index != (mine_index+1)) and \
             (index != (mine_index+(rect_numx+1))) and \
@@ -169,7 +173,7 @@ def calc_mines(index, mine_index):
 
 
 def draw_mineNum():
-    # Drawing nodal mine numbers.
+    # Drawing nodal mine numbers when clicked.
     # Index.
     i = 0
     # Setting font & font color.
@@ -181,7 +185,8 @@ def draw_mineNum():
                 pygame.Color("#649619"),
                 pygame.Color("#e11919"), BLACK]
     for num in mine_num:
-        if num != 0:
+        # Drawing nodal mine numbers when clicked.
+        if (num != 0) and (i in clickedCell):
             # Getting text surface and rectangle.
             textSurf, textRect = text_object(
                 str(num), numFont,
@@ -219,16 +224,18 @@ def draw_field():
 
 
 def draw_hiddenField():
-    # Draw lower level rectangles as hidden field.
+    # Draw lower level rectangles as hidden field,
+    # when clicked.
     # Rectangle color options.
     # "#edc095", "#b99777"
-    rect_color = ("#ffdcb4", "#d2b99b")
+    rect_color = ("#d2b99b", "#ffdcb4")
     row = 0
     for node in nodes:
         i = nodes.index(node)
         # Rectangle color switching purpose.
         if (i % rect_numx) == 0:
             row = row+1
+        # Draw hidden field when clicked.
         if i in clickedCell:
             pygame.draw.rect(screenSurface, pygame.Color
                              (rect_color[(i+row) % 2]),
@@ -245,6 +252,7 @@ def mouse_click():
 
 def mouse_LClick():
     # Left click operations.
+    # Overwriting global variable, clickedCell.
     # Mouse click position.
     x, y = pygame.mouse.get_pos()
     # Field range.
@@ -268,22 +276,86 @@ def mouse_LClick():
                 if i in randIndex:
                     minedCell_click()
                 # Detecting empty cell click.
-                if (i not in randIndex) and \
+                elif (i not in randIndex) and \
                         (mine_num[i] == 0):
-                    emptyCell_click()
-                if i not in clickedCell:
+                    emptyCell_click(i)
+                # Detecting numbered cell click.
+                elif (i not in clickedCell) and \
+                        (mine_num[i] != 0):
                     clickedCell.append(i)
 
 
-def emptyCell_click():
-    # Operations if clicked empty cell.
-    print("You clicked empty cell.")
+def emptyCell_click(index):
+    # Operations if clicked empty cell
+    # (reveal all empty and numbered cells in that area).
+    # Overwriting global variable, clickedCell.
+    if index not in clickedCell:
+        clickedCell.append(index)
+        # Check 8 adjacent cells.
+        # Left cell check.
+        cell_check(index-1, index)
+        # Right cell check.
+        cell_check(index+1, index)
+        # Top cell check.
+        cell_check((index-rect_numx), index)
+        # Bottom cell check.
+        cell_check((index+rect_numx), index)
+        # Top-left cell check.
+        cell_check((index-(rect_numx+1)), index)
+        # Top-right cell check.
+        cell_check((index-(rect_numx-1)), index)
+        # Bottom-left cell check.
+        cell_check((index+(rect_numx-1)), index)
+        # Bottom-right cell check.
+        cell_check((index+(rect_numx+1)), index)
+
+
+def cell_check(index, ec_index):
+    # Checking the cell adjacent to the empty cell.
+    # Checking cell if it is within the range and
+    # not in the mine list (randNodes).
+    if (index not in randIndex) and \
+            (0 <= index < (rect_numx*rect_numy)):
+        # When clicked cell is not on the 2 side boundaries.
+        if ((ec_index+1) % rect_numx != 1) and \
+                ((ec_index+1) % rect_numx != 0):
+            ec_check(index)
+        # When clicked cell is on the left boundary,
+        # declude its left side cells.
+        elif ((ec_index+1) % rect_numx == 1) and \
+            (index != (ec_index-1)) and \
+            (index != (ec_index-(rect_numx+1))) and \
+                (index != (ec_index+(rect_numx-1))):
+            ec_check(index)
+        # When clicked cell is on the right boundary,
+        # declude its right side cells.
+        elif ((ec_index+1) % rect_numx == 0) and \
+            (index != (ec_index+1)) and \
+            (index != (ec_index+(rect_numx+1))) and \
+                (index != (ec_index-(rect_numx-1))):
+            ec_check(index)
+
+
+def ec_check(index):
+    # Checking the cell for emptyness.
+    # Overwriting global variable, clickedCell.
+    # If empty cell, consider as clicked empty cell.
+    if (mine_num[index] == 0) and (index not in randIndex):
+        emptyCell_click(index)
+    # Else if numbered cell, register as clicked and
+    # stop recursion.
+    elif mine_num[index] != 0:
+        if index not in clickedCell:
+            clickedCell.append(index)
 
 
 def minedCell_click():
-    # Operations if clicked mine.
+    # Operations if clicked mine
+    # (reveal all mine cells).
+    # Overwriting global variable, clickedCell.
     for i in randIndex:
-        clickedCell.append(i)
+        if i not in clickedCell:
+            clickedCell.append(i)
 
 
 # Setting game as running (true).
@@ -337,7 +409,6 @@ while isRunning():
         get_randNodes()
         mine_count()
         firstTime = False
-        print('One time ' + str(mine_num))
     draw_field()
     draw_hiddenField()
     draw_mines()

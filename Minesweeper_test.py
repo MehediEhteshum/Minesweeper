@@ -117,19 +117,29 @@ def get_randNodes(firstClick_index):
     # Overwriting global variables,
     # randNodes & randIndex.
     i = firstClick_index
-    # no-mine cells' indices based on first Lclick
-    # (click + 8 adjacent cells).
-    noMineIndex = (i, (i-(rect_numx+1)), (i-rect_numx),
-                   (i-(rect_numx-1)), (i-1), (i+1),
+    # 9 no-mine cells' indices based on first Lclick.
+    # Check 8 adjacent cells.
+    # (click + 8 adjacent cells, in left to right &
+    # top to bottom order).
+    cells_index = ((i-(rect_numx+1)), (i-rect_numx),
+                   (i-(rect_numx-1)), (i-1), i, (i+1),
                    (i+(rect_numx-1)), (i+rect_numx),
                    (i+(rect_numx+1)))
-    print(noMineIndex)
-    # # Initializing cells allowed for mine (as all nodes).
-    # mineCells = nodes
-    # # Removing node/cell which are not allowed for mine.
-    # for index in noMineIndex:
-    #     mineCells.remove(nodes[index])
-    randNodes = random.sample(nodes, mine_tot)
+    # Cells where no mine is allowed based on first Lclick.
+    noMineCells = []
+    # Checking for valid cell index.
+    for x in cells_index:
+        if x != i:
+            # v = valid cell index.
+            v = cell_check(x, i)
+        elif x == i:
+            # v = valid cell index.
+            v = i
+        # For valid v.
+        if v is not None:
+            noMineCells.append(nodes[v])
+    mineCells = list(set(nodes)-set(noMineCells))
+    randNodes = random.sample(mineCells, mine_tot)
     for node in randNodes:
         # Getting the index of random nodes at nodes list.
         randIndex.append(nodes.index(node))
@@ -137,52 +147,26 @@ def get_randNodes(firstClick_index):
 
 
 def mine_count():
-    # Calculating mine numbers at nodes.
-    # Calculating mine numbers for 8 adjacent nodes.
-    for index in randIndex:
-        # Left rectangle.
-        calc_mines(index-1, index)
-        # Right rectangle.
-        calc_mines(index+1, index)
-        # Top rectangle.
-        calc_mines((index-rect_numx), index)
-        # Bottom rectangle.
-        calc_mines((index+rect_numx), index)
-        # Top-left rectangle.
-        calc_mines((index-(rect_numx+1)), index)
-        # Top-right rectangle.
-        calc_mines((index-(rect_numx-1)), index)
-        # Bottom-left rectangle.
-        calc_mines((index+(rect_numx-1)), index)
-        # Bottom-right rectangle.
-        calc_mines((index+(rect_numx+1)), index)
-
-
-def calc_mines(index, mine_index):
+    # Calculating mine numbers at nodes/cells.
     # Overwriting global variable, mine_num.
-    # """ Checking node
-    # if it is within the range and
-    # not in the mine list, randNodes. """
-    if (index not in randIndex) and \
-            (0 <= index < (rect_numx*rect_numy)):
-        # When mine cell is not on the 2 side boundaries.
-        if ((mine_index+1) % rect_numx != 1) and \
-                ((mine_index+1) % rect_numx != 0):
-            mine_num[index] = mine_num[index] + 1
-        # When mine cell is on the left boundary,
-        # declude its left side cells.
-        elif ((mine_index+1) % rect_numx == 1) and \
-            (index != (mine_index-1)) and \
-            (index != (mine_index-(rect_numx+1))) and \
-                (index != (mine_index+(rect_numx-1))):
-            mine_num[index] = mine_num[index] + 1
-        # When mine cell is on the right boundary,
-        # declude its right side cells.
-        elif ((mine_index+1) % rect_numx == 0) and \
-            (index != (mine_index+1)) and \
-            (index != (mine_index+(rect_numx+1))) and \
-                (index != (mine_index-(rect_numx-1))):
-            mine_num[index] = mine_num[index] + 1
+    # Calculating mine numbers for 8 adjacent nodes/cells.
+    for i in randIndex:
+        # Check 8 adjacent cells.
+        # (index + 8 adjacent cells, in left to right &
+        # top to bottom order).
+        cells_index = ((i-(rect_numx+1)), (i-rect_numx),
+                       (i-(rect_numx-1)), (i-1), i, (i+1),
+                       (i+(rect_numx-1)), (i+rect_numx),
+                       (i+(rect_numx+1)))
+        # Checking for valid cell index.
+        for x in cells_index:
+            if x != i:
+                # v = valid cell index.
+                v = cell_check(x, i)
+                # For valid v which is not a mine cell.
+                if (v is not None) and (v not in randIndex):
+                    # Counting mines at adjacent cells.
+                    mine_num[v] = mine_num[v] + 1
 
 
 def draw_mineNum():
@@ -366,59 +350,59 @@ def emptyCell_click(index):
     # Operations if clicked empty cell
     # (reveal all empty and numbered cells in that area).
     # Overwriting global variable, LclickedCell.
-    if index not in LclickedCell:
-        LclickedCell.append(index)
+    i = index
+    if i not in LclickedCell:
+        LclickedCell.append(i)
         # Check 8 adjacent cells.
-        # Left cell check.
-        cell_check(index-1, index)
-        # Right cell check.
-        cell_check(index+1, index)
-        # Top cell check.
-        cell_check((index-rect_numx), index)
-        # Bottom cell check.
-        cell_check((index+rect_numx), index)
-        # Top-left cell check.
-        cell_check((index-(rect_numx+1)), index)
-        # Top-right cell check.
-        cell_check((index-(rect_numx-1)), index)
-        # Bottom-left cell check.
-        cell_check((index+(rect_numx-1)), index)
-        # Bottom-right cell check.
-        cell_check((index+(rect_numx+1)), index)
+        # (click + 8 adjacent cells, in left to right &
+        # top to bottom order).
+        cells_index = ((i-(rect_numx+1)), (i-rect_numx),
+                       (i-(rect_numx-1)), (i-1), i, (i+1),
+                       (i+(rect_numx-1)), (i+rect_numx),
+                       (i+(rect_numx+1)))
+        # Checking for valid cell index.
+        for x in cells_index:
+            if x != i:
+                # v = valid cell index.
+                v = cell_check(x, i)
+                if v is not None:
+                    # Checking cell for emptyness.
+                    ec_check(v)
 
 
-def cell_check(index, ec_index):
-    # Checking the cell adjacent to the empty cell.
-    # Checking cell if it is within the range and
-    # not in the mine list (randNodes).
-    if (index not in randIndex) and \
-            (0 <= index < (rect_numx*rect_numy)):
+def cell_check(cell_index, init_index):
+    # Checking the cell for index validity.
+    # Checking cell if it is within the range.
+    if 0 <= cell_index < (rect_numx*rect_numy):
         # When clicked cell is not on the 2 side boundaries.
-        if ((ec_index+1) % rect_numx != 1) and \
-                ((ec_index+1) % rect_numx != 0):
-            ec_check(index)
+        if ((init_index+1) % rect_numx != 1) and \
+                ((init_index+1) % rect_numx != 0):
+            return cell_index
         # When clicked cell is on the left boundary,
         # declude its left side cells.
-        elif ((ec_index+1) % rect_numx == 1) and \
-            (index != (ec_index-1)) and \
-            (index != (ec_index-(rect_numx+1))) and \
-                (index != (ec_index+(rect_numx-1))):
-            ec_check(index)
+        if ((init_index+1) % rect_numx == 1) and \
+            (cell_index != (init_index-1)) and \
+            (cell_index != (init_index-(rect_numx+1))) and \
+                (cell_index != (init_index+(rect_numx-1))):
+            return cell_index
         # When clicked cell is on the right boundary,
         # declude its right side cells.
-        elif ((ec_index+1) % rect_numx == 0) and \
-            (index != (ec_index+1)) and \
-            (index != (ec_index+(rect_numx+1))) and \
-                (index != (ec_index-(rect_numx-1))):
-            ec_check(index)
+        if ((init_index+1) % rect_numx == 0) and \
+            (cell_index != (init_index+1)) and \
+            (cell_index != (init_index+(rect_numx+1))) and \
+                (cell_index != (init_index-(rect_numx-1))):
+            return cell_index
+        return None
+    return None
 
 
 def ec_check(index):
     # Checking the cell for emptyness.
-    # Overwriting global variable, LclickedCell.
+    # Overwriting global variable, LclickedCell &
+    # RclickedCell.
     # If empty cell, consider as clicked empty cell.
     if (mine_num[index] == 0) and (index not in randIndex):
-        # Revealed empty cell, removed from Rclicked.
+        # Revealed empty cell, removed from Rclicked (flag).
         if index in RclickedCell:
             RclickedCell.remove(index)
         emptyCell_click(index)

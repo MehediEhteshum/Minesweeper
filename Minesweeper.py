@@ -57,13 +57,13 @@ minWndwHeight = (minRectArm*rect_numy)/hgtPerc
 # Initializing node parameters
 # (all nodes, random nodes & indices, unit rectangle location,
 # clicked cell's nodal index).
+# Initializing firstClick state.
 nodes = []
 randNodes = []
 randIndex = []
 rect_locx = []
 rect_locy = []
-LclickedCell = []
-RclickedCell = []
+firstClick = True
 
 
 def get_nodes():
@@ -108,20 +108,32 @@ def draw_mines():
                                mine_size)
 
 
-def get_randNodes():
-    # Getting random node points.
+def get_randNodes(firstClick_index):
+    # Getting random node points for mines
+    # based on first Lclick.
     global randNodes
     randNodes.clear()
+    randIndex.clear()
     # Overwriting global variables,
     # randNodes & randIndex.
+    i = firstClick_index
+    # no-mine cells' indices based on first Lclick
+    # (click + 8 adjacent cells).
+    noMineIndex = (i, (i-(rect_numx+1)), (i-rect_numx),
+                   (i-(rect_numx-1)), (i-1), (i+1),
+                   (i+(rect_numx-1)), (i+rect_numx),
+                   (i+(rect_numx+1)))
+    print(noMineIndex)
+    # # Initializing cells allowed for mine (as all nodes).
+    # mineCells = nodes
+    # # Removing node/cell which are not allowed for mine.
+    # for index in noMineIndex:
+    #     mineCells.remove(nodes[index])
     randNodes = random.sample(nodes, mine_tot)
     for node in randNodes:
         # Getting the index of random nodes at nodes list.
         randIndex.append(nodes.index(node))
-
-
-# Initializing a list for nodal mine numbers.
-mine_num = [0]*(rect_numx*rect_numy)
+    mine_count()
 
 
 def mine_count():
@@ -253,7 +265,7 @@ def mouse_click():
         mouse_LClick()
     # Right click.
     elif event.button == 3:
-        mouse_RClick()    
+        mouse_RClick()
     print((mine_tot-len(RclickedCell)))
 
 
@@ -261,16 +273,18 @@ def mouse_RClick():
     # Right click operations.
     # Overwriting global variable, RclickedCell.
     # Nodal (mine field) index value assignment.
-    i = node_click()
-    # Here, "i = None" means clicked outside the field.
-    # Checking for non-outside & non-left Click.
-    if (i is not None) and (i not in LclickedCell):
-        # Registering Rclick if not Rclicked before.
-        if i not in RclickedCell:
-            RclickedCell.append(i)
-        # Unregistering Rclick if Rclicked before.
-        elif i in RclickedCell:
-            RclickedCell.remove(i)
+    # These Rclick operations valid when not game over.
+    if not gameOver:
+        i = node_click()
+        # Here, "i = None" means clicked outside the field.
+        # Checking for non-outside & non-left Click.
+        if (i is not None) and (i not in LclickedCell):
+            # Registering Rclick if not Rclicked before.
+            if i not in RclickedCell:
+                RclickedCell.append(i)
+            # Unregistering Rclick if Rclicked before.
+            elif i in RclickedCell:
+                RclickedCell.remove(i)
 
 
 def draw_flag():
@@ -287,23 +301,40 @@ def draw_flag():
 
 def mouse_LClick():
     # Left click operations.
-    # Overwriting global variable, LclickedCell.
-    # Nodal (mine field) index value assignment.
-    i = node_click()
-    # Here, "i = None" means clicked outside the field.
-    # Checking for non-outside & non-right Click.
-    if (i is not None) and (i not in RclickedCell):
-        # Detecting mined cell click.
-        if i in randIndex:
-            minedCell_click(i)
-        # Detecting empty cell click.
-        elif (i not in randIndex) and \
-                (mine_num[i] == 0):
-            emptyCell_click(i)
-        # Detecting numbered cell click.
-        elif (i not in LclickedCell) and \
-                (mine_num[i] != 0):
-            LclickedCell.append(i)
+    # Overwriting global variable, LclickedCell,
+    # firstClick.
+    # These Lclick operations valid when not game over.
+    global firstClick
+    if not gameOver:
+        # Nodal (mine field) index value assignment.
+        i = node_click()
+        # Here, "i = None" means clicked outside the field.
+        # Checking for non-outside & non-right Click.
+        if (i is not None) and (i not in RclickedCell):
+            # First Lclick operation to generate mines.
+            if firstClick:
+                get_randNodes(i)
+                firstClick = False
+            # Detecting mined cell click.
+            if i in randIndex:
+                minedCell_click(i)
+            # Detecting empty cell click.
+            elif (i not in randIndex) and \
+                    (mine_num[i] == 0):
+                emptyCell_click(i)
+            # Detecting numbered cell click.
+            elif (i not in LclickedCell) and \
+                    (mine_num[i] != 0):
+                LclickedCell.append(i)
+    # These Lclick operations valid when game over.
+    elif gameOver:
+        # Nodal (mine field) index value assignment.
+        i = node_click()
+        # Here, "i = None" means clicked outside the field.
+        # Checking for outside & non-right Click.
+        if (i is None) and (i not in RclickedCell):
+            # Reset game.
+            game_reset()
 
 
 def node_click():
@@ -402,15 +433,13 @@ def ec_check(index):
             LclickedCell.append(index)
 
 
-mine_clicked = False
-
-
 def minedCell_click(index):
     # Operations if clicked mine
     # (reveal all mine cells).
     # Overwriting global variable, LclickedCell
     # & mine_clicked.
     # Reveal clicked mine cell.
+    global mine_clicked
     if index not in LclickedCell:
         LclickedCell.append(index)
     # Reveal all other mine cells (randNodes)
@@ -419,7 +448,6 @@ def minedCell_click(index):
         if (i not in LclickedCell) and \
                 (i not in RclickedCell):
             LclickedCell.append(i)
-    global mine_clicked
     mine_clicked = True
 
 
@@ -449,12 +477,39 @@ def isRunning():
     return True
 
 
+def game_reset():
+    # Reset key game values.
+    # Overwriting global variables, firstTime.
+    global firstTime
+    print("Game reset.")
+    firstTime = True
+
+
 # Pygame events initialization.
 # """ pygame.event.pump() """
 event = pygame.event.wait()
 
 # Running the game till exiting.
 while isRunning():
+    # Getting nodal points of the main rectangle.
+    get_nodes()
+    if firstTime:
+        # Runs only for the first loop.
+        # Reset key game values.
+        # Initializing clicked cell's nodal index.
+        # Initializing mine_clicked, firstClick
+        # & gameOver state.
+        LclickedCell = []
+        RclickedCell = []
+        mine_clicked = False
+        gameOver = False
+        firstClick = True
+        # firstClick to generate mines,
+        # get_randNodes() & mine_count().
+        # Initializing a list for nodal mine numbers.
+        mine_num = [0]*(rect_numx*rect_numy)
+        firstTime = False
+        print("One time")
     # """ pygame.event.pump() """
     event = pygame.event.wait()
     # Checking mouse click (down).
@@ -481,13 +536,6 @@ while isRunning():
     # Filling screen color. Updating screen.
     screenSurface.fill(WHITE)
     # """ screenSurface.blit(sampleImage, sampleImageRect) """
-    get_nodes()
-    if firstTime:
-        # Runs only for the first loop.
-        get_randNodes()
-        mine_count()
-        firstTime = False
-        print("One time")
     draw_field()
     draw_hiddenField()
     draw_mines()
@@ -496,6 +544,11 @@ while isRunning():
     if mine_clicked:
         # Draw cross if wrong flag.
         draw_cross()
+        gameOver = True
+        print("TRY AGAIN")
+    elif (len(nodes)-len(LclickedCell)) == mine_tot:
+        gameOver = True
+        print("SCORE. PLAY AGAIN")
     screen.flip()
 
 pygame.quit()

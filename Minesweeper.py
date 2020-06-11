@@ -174,8 +174,6 @@ def calc_mines(index, mine_index):
 
 def draw_mineNum():
     # Drawing nodal mine numbers when clicked.
-    # Index.
-    i = 0
     # Setting font & font color.
     # font size adjustable with window size.
     fontSize = round(rect_arm*0.70)
@@ -184,9 +182,10 @@ def draw_mineNum():
     numColor = [WHITE, pygame.Color("#3232d2"),
                 pygame.Color("#649619"),
                 pygame.Color("#e11919"), BLACK]
-    for num in mine_num:
+    for i in clickedCell:
         # Drawing nodal mine numbers when clicked.
-        if (num != 0) and (i in clickedCell):
+        num = mine_num[i]
+        if num != 0:
             # Getting text surface and rectangle.
             textSurf, textRect = text_object(
                 str(num), numFont,
@@ -196,8 +195,6 @@ def draw_mineNum():
                                (rect_locy[i]+(rect_arm/2)))
             # Drawing text.
             screenSurface.blit(textSurf, textRect)
-        # Index increment.
-        i = i + 1
 
 
 def text_object(text, font, color):
@@ -227,33 +224,68 @@ def draw_hiddenField():
     # Draw lower level rectangles as hidden field,
     # when clicked.
     # Rectangle color options.
-    # "#edc095", "#b99777"
-    rect_color = ("#d2b99b", "#ffdcb4")
-    row = 0
-    for node in nodes:
-        i = nodes.index(node)
-        # Rectangle color switching purpose.
-        if (i % rect_numx) == 0:
-            row = row+1
-        # Draw hidden field when clicked.
-        if i in clickedCell:
-            pygame.draw.rect(screenSurface, pygame.Color
-                             (rect_color[(i+row) % 2]),
-                             (rect_locx[i], rect_locy[i],
-                              (rect_arm+1), (rect_arm+1)))
+    rect_color = ("#c8beaf", "#e6d7c3")
+    for i in clickedCell:
+        # Calculate row & column of the clicked cell.
+        r, c = (i//rect_numx), (i % rect_numx)
+        # Choosing cell color option.
+        # When row and column = odd-odd.
+        if (r % 2 == 1) and (c % 2 == 1):
+            color_opt = 1
+        # When row and column = even-even.
+        elif (r % 2 == 0) and (c % 2 == 0):
+            color_opt = 1
+        # When row and column = even-odd or odd-even.
+        else:
+            color_opt = 0
+        pygame.draw.rect(screenSurface, pygame.Color
+                         (rect_color[color_opt]),
+                         (rect_locx[i], rect_locy[i],
+                          (rect_arm+1), (rect_arm+1)))
         # (rect_arm+1): '1' added to remove pixel gap.
 
 
 def mouse_click():
     # Detecting and classifying different mouse clicks.
+    # Left click.
     if event.button == 1:
         mouse_LClick()
+    # Right click.
+    elif event.button == 3:
+        mouse_RClick()
+
+
+def mouse_RClick():
+    # Right click operations.
+    # Nodal (mine field) index value assignment.
+    i = node_click()
+    print(i)
 
 
 def mouse_LClick():
     # Left click operations.
     # Overwriting global variable, clickedCell.
-    # Mouse click position.
+    # Nodal (mine field) index value assignment.
+    i = node_click()
+    # Here, "i = None" means clicked outside the field.
+    if i is not None:
+        # Detecting mined cell click.
+        if i in randIndex:
+            minedCell_click()
+        # Detecting empty cell click.
+        elif (i not in randIndex) and \
+                (mine_num[i] == 0):
+            emptyCell_click(i)
+        # Detecting numbered cell click.
+        elif (i not in clickedCell) and \
+                (mine_num[i] != 0):
+            clickedCell.append(i)
+
+
+def node_click():
+    # Get mouse click nodal position on the field.
+    # Nodal index default = None i.e. outside field.
+    i = None
     x, y = pygame.mouse.get_pos()
     # Field range.
     x_min = round(wndwCenter[0]-(rect_numx*rect_arm/2)-1)
@@ -263,26 +295,16 @@ def mouse_LClick():
     # Minus '1' for pixel gap adjustment.
     # Detecting click within the field range.
     if (x_min <= x <= x_max) and (y_min <= y <= y_max):
-        for node in nodes:
-            # Unit cell range.
-            xn_min, xn_max = (node[0]-1), (node[0]+rect_arm-1)
-            yn_min, yn_max = (node[1]-1), (node[1]+rect_arm-1)
-            # Minus '1' for pixel gap adjustment.
-            # Detecting clicked unit cell by nodal index.
-            if (xn_min <= x <= xn_max) and \
-                    (yn_min <= y <= yn_max):
-                i = nodes.index(node)
-                # Detecting mined cell click.
-                if i in randIndex:
-                    minedCell_click()
-                # Detecting empty cell click.
-                elif (i not in randIndex) and \
-                        (mine_num[i] == 0):
-                    emptyCell_click(i)
-                # Detecting numbered cell click.
-                elif (i not in clickedCell) and \
-                        (mine_num[i] != 0):
-                    clickedCell.append(i)
+        # First node on the field and its coordinate.
+        node0 = nodes[0]
+        x0, y0 = node0[0], node0[1]
+        # c, r = column and row of (x, y)
+        c, r = (abs(x-(x0-1)) // rect_arm), \
+            (abs(y-(y0-1)) // rect_arm)
+        # Minus '1' for pixel gap adjustment.
+        # Nodal (mine field) index of (x, y)
+        i = int(c+(r*rect_numx))
+    return i
 
 
 def emptyCell_click(index):
@@ -409,6 +431,7 @@ while isRunning():
         get_randNodes()
         mine_count()
         firstTime = False
+        print(None in [0, 1, 2])
     draw_field()
     draw_hiddenField()
     draw_mines()

@@ -62,7 +62,8 @@ randNodes = []
 randIndex = []
 rect_locx = []
 rect_locy = []
-clickedCell = []
+LclickedCell = []
+RclickedCell = []
 
 
 def get_nodes():
@@ -98,7 +99,7 @@ def draw_mines():
     mine_color = pygame.Color("#e15a19")
     for index in randIndex:
         # Drawing mines when clicked.
-        if index in clickedCell:
+        if index in LclickedCell:
             pygame.draw.circle(screenSurface, mine_color,
                                (int(round((rect_locx[index] +
                                            (rect_arm/2)), 0)),
@@ -182,7 +183,7 @@ def draw_mineNum():
     numColor = [WHITE, pygame.Color("#3232d2"),
                 pygame.Color("#649619"),
                 pygame.Color("#e11919"), BLACK]
-    for i in clickedCell:
+    for i in LclickedCell:
         # Drawing nodal mine numbers when clicked.
         num = mine_num[i]
         if num != 0:
@@ -225,7 +226,7 @@ def draw_hiddenField():
     # when clicked.
     # Rectangle color options.
     rect_color = ("#c8beaf", "#e6d7c3")
-    for i in clickedCell:
+    for i in LclickedCell:
         # Calculate row & column of the clicked cell.
         r, c = (i//rect_numx), (i % rect_numx)
         # Choosing cell color option.
@@ -252,34 +253,57 @@ def mouse_click():
         mouse_LClick()
     # Right click.
     elif event.button == 3:
-        mouse_RClick()
+        mouse_RClick()    
+    print((mine_tot-len(RclickedCell)))
 
 
 def mouse_RClick():
     # Right click operations.
+    # Overwriting global variable, RclickedCell.
     # Nodal (mine field) index value assignment.
     i = node_click()
-    print(i)
+    # Here, "i = None" means clicked outside the field.
+    # Checking for non-outside & non-left Click.
+    if (i is not None) and (i not in LclickedCell):
+        # Registering Rclick if not Rclicked before.
+        if i not in RclickedCell:
+            RclickedCell.append(i)
+        # Unregistering Rclick if Rclicked before.
+        elif i in RclickedCell:
+            RclickedCell.remove(i)
+
+
+def draw_flag():
+    # Draw flag if Rclicked.
+    flag_size = round(0.20*rect_arm)
+    for i in RclickedCell:
+        pygame.draw.circle(screenSurface, BLUE,
+                           (int(round((rect_locx[i] +
+                                       (rect_arm/2)), 0)),
+                            int(round((rect_locy[i] +
+                                       (rect_arm/2)), 0))),
+                           flag_size)
 
 
 def mouse_LClick():
     # Left click operations.
-    # Overwriting global variable, clickedCell.
+    # Overwriting global variable, LclickedCell.
     # Nodal (mine field) index value assignment.
     i = node_click()
     # Here, "i = None" means clicked outside the field.
-    if i is not None:
+    # Checking for non-outside & non-right Click.
+    if (i is not None) and (i not in RclickedCell):
         # Detecting mined cell click.
         if i in randIndex:
-            minedCell_click()
+            minedCell_click(i)
         # Detecting empty cell click.
         elif (i not in randIndex) and \
                 (mine_num[i] == 0):
             emptyCell_click(i)
         # Detecting numbered cell click.
-        elif (i not in clickedCell) and \
+        elif (i not in LclickedCell) and \
                 (mine_num[i] != 0):
-            clickedCell.append(i)
+            LclickedCell.append(i)
 
 
 def node_click():
@@ -310,9 +334,9 @@ def node_click():
 def emptyCell_click(index):
     # Operations if clicked empty cell
     # (reveal all empty and numbered cells in that area).
-    # Overwriting global variable, clickedCell.
-    if index not in clickedCell:
-        clickedCell.append(index)
+    # Overwriting global variable, LclickedCell.
+    if index not in LclickedCell:
+        LclickedCell.append(index)
         # Check 8 adjacent cells.
         # Left cell check.
         cell_check(index-1, index)
@@ -360,24 +384,56 @@ def cell_check(index, ec_index):
 
 def ec_check(index):
     # Checking the cell for emptyness.
-    # Overwriting global variable, clickedCell.
+    # Overwriting global variable, LclickedCell.
     # If empty cell, consider as clicked empty cell.
     if (mine_num[index] == 0) and (index not in randIndex):
+        # Revealed empty cell, removed from Rclicked.
+        if index in RclickedCell:
+            RclickedCell.remove(index)
         emptyCell_click(index)
     # Else if numbered cell, register as clicked and
     # stop recursion.
     elif mine_num[index] != 0:
-        if index not in clickedCell:
-            clickedCell.append(index)
+        # Revealed numbered cell, removed from Rclicked.
+        if index in RclickedCell:
+            RclickedCell.remove(index)
+        # Register as clicked and stop recursion.
+        if index not in LclickedCell:
+            LclickedCell.append(index)
 
 
-def minedCell_click():
+mine_clicked = False
+
+
+def minedCell_click(index):
     # Operations if clicked mine
     # (reveal all mine cells).
-    # Overwriting global variable, clickedCell.
+    # Overwriting global variable, LclickedCell
+    # & mine_clicked.
+    # Reveal clicked mine cell.
+    if index not in LclickedCell:
+        LclickedCell.append(index)
+    # Reveal all other mine cells (randNodes)
+    # except those are flagged.
     for i in randIndex:
-        if i not in clickedCell:
-            clickedCell.append(i)
+        if (i not in LclickedCell) and \
+                (i not in RclickedCell):
+            LclickedCell.append(i)
+    global mine_clicked
+    mine_clicked = True
+
+
+def draw_cross():
+    # Draw cross if wrong flag.
+    cross_size = round(0.20*rect_arm)
+    for i in RclickedCell:
+        if i not in randIndex:
+            pygame.draw.circle(screenSurface, BLACK,
+                               (int(round((rect_locx[i] +
+                                           (rect_arm/2)), 0)),
+                                int(round((rect_locy[i] +
+                                           (rect_arm/2)), 0))),
+                               cross_size)
 
 
 # Setting game as running (true).
@@ -431,11 +487,15 @@ while isRunning():
         get_randNodes()
         mine_count()
         firstTime = False
-        print(None in [0, 1, 2])
+        print("One time")
     draw_field()
     draw_hiddenField()
     draw_mines()
     draw_mineNum()
+    draw_flag()
+    if mine_clicked:
+        # Draw cross if wrong flag.
+        draw_cross()
     screen.flip()
 
 pygame.quit()

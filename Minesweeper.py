@@ -125,7 +125,7 @@ def get_randNodes(firstClick_index):
                    (i-(rect_numx-1)), (i-1), i, (i+1),
                    (i+(rect_numx-1)), (i+rect_numx),
                    (i+(rect_numx+1)))
-    # Cells where no mine is allowed based on first Lclick.
+    # Cells where no mines are allowed based on first Lclick.
     noMineCells = []
     # Checking for valid cell index.
     for x in cells_index:
@@ -135,14 +135,18 @@ def get_randNodes(firstClick_index):
         elif x == i:
             # v = valid cell index.
             v = i
-        # For valid v.
+        # For valid v, modify noMineCells.
         if v is not None:
             noMineCells.append(nodes[v])
+    # Cells where mines are allowed based on first Lclick.
     mineCells = list(set(nodes)-set(noMineCells))
+    # Set up mines on random cells/nodes and
+    # know their indices.
     randNodes = random.sample(mineCells, mine_tot)
     for node in randNodes:
         # Getting the index of random nodes at nodes list.
         randIndex.append(nodes.index(node))
+    # Calculating mine numbers at nodes/cells.
     mine_count()
 
 
@@ -203,8 +207,10 @@ def text_object(text, font, color):
 def draw_field():
     # Draw top level 'green' rectangles as minefield.
     # Rectangle color options.
-    rect_color = ("#8ccc14", "#a2e345")
+    rect_color = ("#8ccc14", "#a2e345", "#d2f0c8")
     row = 0
+    # Tracking mouse position as nodal index.
+    mi = mouse_index()
     for node in nodes:
         i = nodes.index(node)
         # Rectangle color switching purpose.
@@ -214,6 +220,12 @@ def draw_field():
                          pygame.Color(rect_color[(i+row) % 2]),
                          (rect_locx[i], rect_locy[i],
                           (rect_arm+1), (rect_arm+1)))
+        # Cell color change when mouse hovering.
+        if (i == mi) and (not gameOver):
+            pygame.draw.rect(screenSurface,
+                             pygame.Color(rect_color[2]),
+                             (rect_locx[i], rect_locy[i],
+                              (rect_arm+1), (rect_arm+1)))
         # (rect_arm+1): '1' added to remove pixel gap.
 
 
@@ -221,7 +233,9 @@ def draw_hiddenField():
     # Draw lower level rectangles as hidden field,
     # when clicked.
     # Rectangle color options.
-    rect_color = ("#c8beaf", "#e6d7c3")
+    rect_color = ("#c8beaf", "#e6d7c3", "#f0e6e1")
+    # Tracking mouse position as nodal index.
+    mi = mouse_index()
     for i in LclickedCell:
         # Calculate row & column of the clicked cell.
         r, c = (i//rect_numx), (i % rect_numx)
@@ -239,6 +253,12 @@ def draw_hiddenField():
                          (rect_color[color_opt]),
                          (rect_locx[i], rect_locy[i],
                           (rect_arm+1), (rect_arm+1)))
+        if (i == mi) and (mine_num[i] != 0) and \
+                (not gameOver):
+            pygame.draw.rect(screenSurface, pygame.Color
+                             (rect_color[2]),
+                             (rect_locx[i], rect_locy[i],
+                              (rect_arm+1), (rect_arm+1)))
         # (rect_arm+1): '1' added to remove pixel gap.
 
 
@@ -259,7 +279,7 @@ def mouse_RClick():
     # Nodal (mine field) index value assignment.
     # These Rclick operations valid when not game over.
     if not gameOver:
-        i = node_click()
+        i = mouse_index()
         # Here, "i = None" means clicked outside the field.
         # Checking for non-outside & non-left Click.
         if (i is not None) and (i not in LclickedCell):
@@ -273,14 +293,18 @@ def mouse_RClick():
 
 def draw_flag():
     # Draw flag if Rclicked.
-    flag_size = round(0.20*rect_arm)
+    imgFlag = pygame.image.load("game assets/Flag.png")
+    # Scaling flag image to the cell.
+    img_scale = rect_arm/imgFlag.get_width()
+    imgFlag = pygame.transform.rotozoom(imgFlag, 0,
+                                        img_scale)
     for i in RclickedCell:
-        pygame.draw.circle(screenSurface, BLUE,
-                           (int(round((rect_locx[i] +
-                                       (rect_arm/2)), 0)),
-                            int(round((rect_locy[i] +
-                                       (rect_arm/2)), 0))),
-                           flag_size)
+        # Draw all flags if game not over.
+        if not gameOver:
+            screenSurface.blit(imgFlag, nodes[i])
+        # Draw only correct flags if game over.
+        elif i in randIndex:
+            screenSurface.blit(imgFlag, nodes[i])
 
 
 def mouse_LClick():
@@ -291,7 +315,7 @@ def mouse_LClick():
     global firstClick
     if not gameOver:
         # Nodal (mine field) index value assignment.
-        i = node_click()
+        i = mouse_index()
         # Here, "i = None" means clicked outside the field.
         # Checking for non-outside & non-right Click.
         if (i is not None) and (i not in RclickedCell):
@@ -313,7 +337,7 @@ def mouse_LClick():
     # These Lclick operations valid when game over.
     elif gameOver:
         # Nodal (mine field) index value assignment.
-        i = node_click()
+        i = mouse_index()
         # Here, "i = None" means clicked outside the field.
         # Checking for outside & non-right Click.
         if (i is None) and (i not in RclickedCell):
@@ -321,8 +345,8 @@ def mouse_LClick():
             game_reset()
 
 
-def node_click():
-    # Get mouse click nodal position on the field.
+def mouse_index():
+    # Get mouse click nodal index on the field.
     # Nodal index default = None i.e. outside field.
     i = None
     x, y = pygame.mouse.get_pos()
@@ -436,16 +460,16 @@ def minedCell_click(index):
 
 
 def draw_cross():
-    # Draw cross if wrong flag.
-    cross_size = round(0.20*rect_arm)
+    # Draw cross if game over and wrong flag.
+    imgCross = pygame.image.load("game assets/Cross.png")
+    # Scaling cross image to the cell.
+    img_scale = rect_arm/imgCross.get_width()
+    imgCross = pygame.transform.rotozoom(imgCross, 0,
+                                         img_scale)
     for i in RclickedCell:
+        # Draw cross for wrong flag.
         if i not in randIndex:
-            pygame.draw.circle(screenSurface, BLACK,
-                               (int(round((rect_locx[i] +
-                                           (rect_arm/2)), 0)),
-                                int(round((rect_locy[i] +
-                                           (rect_arm/2)), 0))),
-                               cross_size)
+            screenSurface.blit(imgCross, nodes[i])
 
 
 # Setting game as running (true).
@@ -488,7 +512,7 @@ while isRunning():
         mine_clicked = False
         gameOver = False
         firstClick = True
-        # firstClick to generate mines,
+        # first Lclick (mouse_LClick()) to generate mines,
         # get_randNodes() & mine_count().
         # Initializing a list for nodal mine numbers.
         mine_num = [0]*(rect_numx*rect_numy)

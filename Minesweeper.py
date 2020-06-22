@@ -24,6 +24,12 @@ screen.set_caption(SCREEN_NAME)
 # Loading images.
 imgBanner = pygame.image.load(
     "game assets/Banner.png").convert()
+imgBlack = pygame.image.load(
+    "game assets/Solid.png").convert()
+imgLclick = pygame.image.load(
+    "game assets/Lclick.png").convert_alpha()
+imgRclick = pygame.image.load(
+    "game assets/Rclick.png").convert_alpha()
 imgClock = pygame.image.load(
     "game assets/Clock.png").convert_alpha()
 imgCross = pygame.image.load(
@@ -64,13 +70,14 @@ minWndwHeight = (minRectArm*rect_numy)/hgtPerc
 # Initializing node parameters
 # (all nodes, random nodes & indices, unit rectangle location,
 # clicked cell's nodal index).
-# Initializing firstClick state.
+# Initializing firstLClick state.
 nodes = []
 randNodes = []
 randIndex = []
 rect_locx = []
 rect_locy = []
-firstClick = True
+firstLClick = True
+firstRClick = True
 time_init = 0
 time_current = 0
 
@@ -117,7 +124,7 @@ def draw_mines():
                                mine_size)
 
 
-def get_randNodes(firstClick_index):
+def get_randNodes(firstLClick_index):
     # Getting random node points for mines
     # based on first Lclick.
     global randNodes
@@ -125,7 +132,7 @@ def get_randNodes(firstClick_index):
     randIndex.clear()
     # Overwriting global variables,
     # randNodes & randIndex.
-    i = firstClick_index
+    i = firstLClick_index
     # 9 no-mine cells' indices based on first Lclick.
     # Check 8 adjacent cells.
     # (click + 8 adjacent cells, in left to right &
@@ -302,14 +309,20 @@ def mouse_click(mouse_event):
 
 def mouse_RClick():
     # Right click operations.
-    # Overwriting global variable, RclickedCell.
+    # Overwriting global variable, RclickedCell,
+    # firstRClick.
     # Nodal (mine field) index value assignment.
     # These Rclick operations valid when not game over.
+    global firstRClick
     if not gameOver:
         i = mouse_index()
         # Here, "i = None" means clicked outside the field.
         # Checking for non-outside & non-left Click.
         if (i is not None) and (i not in LclickedCell):
+            # First Rclick operation to stop drawing
+            # game controls.
+            if firstRClick:
+                firstRClick = False
             # Registering Rclick if not Rclicked before.
             if i not in RclickedCell:
                 RclickedCell.append(i)
@@ -368,7 +381,7 @@ def draw_time(t_init, banner_h):
     # Set max time value.
     t_max = 999
     if not gameOver:
-        if firstClick:
+        if firstLClick:
             # Time values till the first Lclick.
             time_current = 0
         else:
@@ -397,9 +410,9 @@ def draw_time(t_init, banner_h):
 def mouse_LClick():
     # Left click operations.
     # Overwriting global variable, LclickedCell,
-    # firstClick, time_init.
+    # firstLClick, time_init.
     # These Lclick operations valid when not game over.
-    global firstClick, time_init
+    global firstLClick, time_init
     if not gameOver:
         # Nodal (mine field) index value assignment.
         i = mouse_index()
@@ -407,10 +420,10 @@ def mouse_LClick():
         # Checking for non-outside & non-right Click.
         if (i is not None) and (i not in RclickedCell):
             # First Lclick operation to generate mines.
-            if firstClick:
+            if firstLClick:
                 get_randNodes(i)
                 time_init = pygame.time.get_ticks()
-                firstClick = False
+                firstLClick = False
             # Detecting mined cell click.
             if i in randIndex:
                 minedCell_click(i)
@@ -562,7 +575,8 @@ def draw_banner(img_banner, img_flag, img_clock, t_init):
     # Draw banner, border, flag count, flag.
     # Scaling image to the field.
     img_banner = pygame.transform.smoothscale(
-        img_banner, (int(rect_numx*rect_arm), int(rect_arm*1.25)))
+        img_banner, (int(rect_numx*rect_arm),
+                     int(rect_arm*1.25)))
     # Get new height of the image.
     img_h = img_banner.get_height()
     screenSurface.blit(img_banner, (nodes[0][0],
@@ -580,6 +594,32 @@ def draw_banner(img_banner, img_flag, img_clock, t_init):
     draw_flag(img_flag, img_h)
     # Draw clock.
     draw_clock(img_clock, img_h, t_init)
+
+
+def draw_control(img_lclick, img_rclick, img_black):
+    # Draw game controls till the first click on the field.
+    # Setting image dimensions.
+    imgDim = int(rect_numx*rect_arm*0.25)
+    imgAlpha = 175
+    # Scaling image to the field.
+    img_black = pygame.transform.smoothscale(
+        img_black, (imgDim, imgDim))
+    img_lclick = pygame.transform.smoothscale(
+        img_lclick, (imgDim, imgDim))
+    img_rclick = pygame.transform.smoothscale(
+        img_rclick, (imgDim, imgDim))
+    imgLC_rect = img_lclick.get_rect()
+    # Setting image center at window center.
+    imgLC_rect.center = (wndwWidth/2, (wndwHeight/2-rect_arm))
+    # Setting image alpha.
+    img_black.set_alpha(imgAlpha)
+    # Drawing images.
+    images = (img_lclick, img_rclick)
+    screenSurface.blit(img_black, imgLC_rect)
+    # Changing image index every 2.5 seconds.
+    t_tot = pygame.time.get_ticks()
+    i = int(((t_tot//1000)//2.5) % 2)
+    screenSurface.blit(images[i], imgLC_rect)
 
 
 # Setting game as running (true).
@@ -629,15 +669,18 @@ while isRunning:
         # Runs only for the first loop.
         # Reset key game values.
         # Initializing clicked cell's nodal index.
-        # Initializing mine_clicked, firstClick
+        # Initializing mine_clicked, firstLClick
         # & gameOver state.
         LclickedCell = []
         RclickedCell = []
         mine_clicked = False
         gameOver = False
-        firstClick = True
+        firstLClick = True
+        firstRClick = True
         # first Lclick (mouse_LClick()) to generate mines,
         # get_randNodes() & mine_count().
+        # first Rclick (mouse_RClick()) to stop drawing
+        # game control.
         # Initializing a list for nodal mine numbers.
         mine_num = [0]*(rect_numx*rect_numy)
         firstTime = False
@@ -654,9 +697,13 @@ while isRunning:
         draw_cross(imgCross)
         gameOver = True
         print("TRY AGAIN")
+    # If all mines are revealed.
     elif (len(nodes)-len(LclickedCell)) == mine_tot:
         gameOver = True
         print("SCORE. PLAY AGAIN")
+    # Draw game controls till the first click on the field.
+    if firstLClick and firstRClick:
+        draw_control(imgLclick, imgRclick, imgBlack)
     # Drawing banner and border (calling position important).
     draw_banner(imgBanner, imgFlag, imgClock, time_init)
     screen.flip()

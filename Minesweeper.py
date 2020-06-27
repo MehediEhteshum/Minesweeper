@@ -2,7 +2,6 @@ import os
 import ctypes
 import random
 import pygame
-import sys
 
 pygame.init()
 
@@ -37,8 +36,8 @@ imgCross = pygame.image.load(
     "game assets/Cross.png").convert_alpha()
 imgFlag = pygame.image.load(
     "game assets/Flag.png").convert_alpha()
-iconImage = pygame.image.load(
-    "game assets/icon.png").convert_alpha()
+imgMine = pygame.image.load(
+    "game assets/Mine.png").convert_alpha()
 imgLoss = pygame.image.load(
     "game assets/TA.png").convert_alpha()
 imgLoss1 = pygame.image.load(
@@ -51,7 +50,7 @@ imgCup = pygame.image.load(
     "game assets/Cup.png").convert_alpha()
 
 # Setting display icon.
-screen.set_icon(iconImage)
+screen.set_icon(imgMine)
 
 # Setting basic colors.
 RED = (255, 0, 0)
@@ -113,7 +112,7 @@ def get_nodes():
             rect_locy.append(rect_loc[1])
 
 
-def draw_mines():
+def draw_mines(img_mine):
     # Drawing mines when clicked and gameOver.
     # Overwriting global variable, LclickedCell.
     # Drawing nodes.
@@ -123,20 +122,22 @@ def draw_mines():
     #                         int(round(node[1], 0))),
     #                        3) """
     # Mine size adjustable with window size.
-    if gameOver:
-        mine_size = round(rect_arm*0.25)
-        mine_color = pygame.Color("#e15a19")
+    if gameOver and mine_clicked:
+        # Setting image dimension.
+        imgDim = int(rect_arm*0.75)
+        # Scaling image to the cell.
+        img_mine = pygame.transform.smoothscale(
+            img_mine, (imgDim, imgDim))
+        rectMine = img_mine.get_rect()
         for index in randIndex:
-            # Drawing mines when clicked.
+            # Drawing mines when clicked, if not flagged.
             if index not in RclickedCell:
-                pygame.draw.circle(
-                    screenSurface, mine_color,
-                    (int(round((rect_locx[index] +
-                                (rect_arm/2)), 0)),
-                     int(round((rect_locy[index] +
-                                (rect_arm/2)), 0))),
-                    mine_size
-                )
+                # Setting image center at cell center.
+                rectMine.center = \
+                    (nodes[index][0]+rect_arm/2), \
+                    (nodes[index][1]+rect_arm/2)
+                # Drawing image.
+                screenSurface.blit(img_mine, rectMine)
                 LclickedCell.append(index)
 
 
@@ -267,7 +268,7 @@ def draw_field():
         # Rectangle color switching purpose.
         if (i % rect_numx) == 0:
             row = row+1
-        unitRect = pygame.draw.rect(
+        pygame.draw.rect(
             screenSurface,
             pygame.Color(rect_color[(i+row) % 2]),
             (rect_locx[i], rect_locy[i],
@@ -339,7 +340,7 @@ def mouse_RClick():
         # Checking for non-outside & non-left Click.
         if (i is not None) and (i not in LclickedCell):
             # First Rclick operation to stop drawing
-            # remove game controls' image.
+            # game controls' image.
             if firstRClick:
                 firstRClick = False
             # Registering Rclick if not Rclicked before.
@@ -455,15 +456,6 @@ def mouse_LClick():
             elif (i not in LclickedCell) and \
                     (mine_num[i] != 0):
                 LclickedCell.append(i)
-    # These Lclick operations valid when game over.
-    elif gameOver:
-        # Nodal (mine field) index value assignment.
-        i = mouse_index()
-        # Here, "i = None" means clicked outside the field.
-        # Checking for outside click.
-        if i is None:
-            # Reset game.
-            game_reset()
 
 
 def mouse_index():
@@ -668,6 +660,7 @@ def draw_end(img_black, img1, img2, img_clock,
     screenSurface.blit(img2, rectImg2)
     screenSurface.blit(img_clock, rectImg_clock)
     screenSurface.blit(img_cup, rectImg_cup)
+    # Update the screen.
     screen.flip()
     # Handle user input (it's IMPORTANT to check them
     # at the end of the function to avoid unwanted
@@ -675,10 +668,24 @@ def draw_end(img_black, img1, img2, img_clock,
     event = pygame.event.wait()
     # Checking different events.
     event_check(event)
-    # Checking if game is running,
-    # if not resetting game to set gameOver false.
+    # Checking if game is quiting to set gameOver as false,
+    # so to get out of game-over loop and proceed to exit.
     if event.type == pygame.QUIT:
         game_reset()
+    # Checking Lclick position for game reset.
+    if (event.type == pygame.MOUSEBUTTONDOWN) and \
+            (event.button == 1):
+        # Lclick position.
+        x, y = pygame.mouse.get_pos()
+        # Setting valid position range for game reset.
+        x_min = rectImg1[0]
+        x_max = rectImg1[0] + rectImg1[2]
+        y_min = rectImg1[1]
+        y_max = rectImg1[1] + rectImg1[3]
+        # Checking Lclick position within valid range
+        # for game reset.
+        if (x_min <= x <= x_max) and (y_min <= y <= y_max):
+            game_reset()
 
 
 def event_check(event):
@@ -727,7 +734,7 @@ def draw_multiple():
     # draw cross when game-over and wrong flag.
     draw_cross(imgCross)
     # Draw mines when clicked and game-over.
-    draw_mines()
+    draw_mines(imgMine)
     # Drawing banner and border (calling position important).
     draw_banner(imgBanner, imgFlag, imgClock, time_init)
 
@@ -739,7 +746,7 @@ firstTime = True
 
 def game_reset():
     # Reset key game values.
-    # Overwriting global variables, firstTimeF, gameOver.
+    # Overwriting global variables, firstTime, gameOver.
     global firstTime, gameOver
     print("Game reset.")
     firstTime = True
@@ -766,6 +773,7 @@ while isRunning:
         gameOver = False
         firstLClick = True
         firstRClick = True
+        waitTime = 3000
         # first Lclick (mouse_LClick()) to generate mines,
         # get_randNodes() & mine_count().
         # first Rclick (mouse_RClick()) to stop drawing
@@ -784,13 +792,13 @@ while isRunning:
     if mine_clicked:
         gameOver = True
         # Detect mine cells and draw mines.
-        draw_mines()
+        draw_mines(imgMine)
         # Calling multiple common draw functions.
         draw_multiple()
         # Update screen.
         screen.flip()
         # wait for sometime in milisecs.
-        pygame.time.wait(1500)
+        pygame.time.wait(waitTime)
         while gameOver:
             # Draw game-over images and messages.
             draw_end(imgBlack, imgLoss, imgLoss1, imgClock,
@@ -801,7 +809,7 @@ while isRunning:
         # Update screen.
         screen.flip()
         # wait for sometime in milisecs.
-        pygame.time.wait(1500)
+        pygame.time.wait(waitTime)
         while gameOver:
             # Draw game-over images and messages.
             draw_end(imgBlack, imgWin, imgWin1, imgClock,

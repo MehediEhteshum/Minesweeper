@@ -1,7 +1,9 @@
 import os
 import ctypes
 import random
+import csv
 import pygame
+import pandas
 
 pygame.init()
 
@@ -90,6 +92,7 @@ firstLClick = True
 firstRClick = True
 time_init = 0
 time_current = 0
+time_max = 999
 
 
 def get_nodes():
@@ -399,7 +402,6 @@ def draw_time(t_init, banner_h):
     # Overwriting global variable, time_current
     global time_current
     # Set max time value.
-    t_max = 999
     if not gameOver:
         if firstLClick:
             # Time values till the first Lclick.
@@ -408,9 +410,9 @@ def draw_time(t_init, banner_h):
             # Time values after the first Lclick.
             t_tot = pygame.time.get_ticks()
             time_current = (t_tot-t_init)//1000
-        if time_current > t_max:
+        if time_current > time_max:
             # Time value can't exceed its max set value.
-            time_current = t_max
+            time_current = time_max
     # Setting font & font color.
     # font size adjustable with window size.
     fontSize = round(rect_arm*0.50)
@@ -660,9 +662,7 @@ def draw_end(img_black, img1, img2, img_clock,
     screenSurface.blit(img2, rectImg2)
     screenSurface.blit(img_clock, rectImg_clock)
     screenSurface.blit(img_cup, rectImg_cup)
-    # Update the screen.
-    screen.flip()
-    # Handle user input (it's IMPORTANT to check them
+    # Handle events (it's IMPORTANT to check them
     # at the end of the function to avoid unwanted
     # flag drawing by draw_banner).
     event = pygame.event.wait()
@@ -693,7 +693,7 @@ def event_check(event):
     # Overwriting global variables, isRunning, wndwSize,
     # wndwWidth, wndwWidth, rect_arm, wndwCenter,
     # screenSurface.
-    global isRunning, wndwSize, wndwWidth, wndwWidth, \
+    global isRunning, wndwSize, wndwWidth, wndwHeight, \
         rect_arm, wndwCenter, screenSurface
     # Checking if game is running.
     if event.type == pygame.QUIT:
@@ -739,6 +739,77 @@ def draw_multiple():
     draw_banner(imgBanner, imgFlag, imgClock, time_init)
 
 
+def draw_result(score, x):
+    # Drawing result.
+    # Setting font & font color.
+    # font size adjustable with window size.
+    fontSize = round(rect_arm*0.50)
+    numFont = pygame.font.SysFont("Arial", fontSize, True)
+    numColor = WHITE
+    # Getting text surface and rectangle.
+    textSurf, textRect = text_object(
+        str(score).zfill(3), numFont, numColor)
+    # Setting text rectangle's center.
+    textRect.center = ((wndwCenter[0]-rect_arm*1.1*x),
+                       (wndwCenter[1]-rect_arm*1.1))
+    # Drawing text.
+    screenSurface.blit(textSurf, textRect)
+
+
+def save_result():
+    # Saving result & returning the best score.
+    # File directory (current & new).
+    cur_path = os.getcwd()
+    new_path = os.path.join(
+        cur_path, "game assets", "score.csv")
+    # No data-frame for pandas (before csv file creation).
+    df = None
+    # Pandas can't create data-frame for 'JUST' created
+    # csv file. Hence it's important to try creating DF
+    # when csv file already existed.
+    try:
+        # Data-frame for pandas (when csv file existed).
+        df = pandas.read_csv(new_path)
+    # pylint: disable = broad-except
+    except Exception:
+        # Avoiding errors before csv file creation.
+        pass
+    # Columns representing game modes.
+    columns = ("easy", "medium", "hard")
+    # If file doesn't exist.
+    if not os.path.exists(new_path):
+        # Creating a csv file (if not exists).
+        f = open(new_path, "a+")
+        # Creating the column headers.
+        writer = csv.DictWriter(
+            f, columns, lineterminator="\n")
+        writer.writeheader()
+    # Opening the csv file for appending operation.
+    f = open(new_path, "a+")
+    # When csv file just created i.e. first time.
+    if df is None:
+        # First time.
+        best_scr = time_current
+        # Adding row to the file; time_max as dummy value.
+        row = (time_current, time_max, time_max)
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerow(row)
+    # When csv file already existed.
+    else:
+        # Adding value to the file if not existed.
+        if time_current not in list(df[columns[0]]):
+            # Adding row to the file; time_max as dummy value.
+            row = (time_current, time_max, time_max)
+            writer = csv.writer(f, lineterminator="\n")
+            writer.writerow(row)
+        # Finding best score for a game mode.
+        list_best = min(list(df["easy"]))
+        best_scr = list_best if (list_best < time_current) \
+            else time_current
+    f.close()
+    return best_scr
+
+
 # Setting game as running (true).
 isRunning = True
 firstTime = True
@@ -755,10 +826,10 @@ def game_reset():
 
 # Running the game till exiting.
 while isRunning:
-    # Handle user-input.
-    for event in pygame.event.get():
+    # Handle events.
+    for e in pygame.event.get():
         # Checking different events.
-        event_check(event)
+        event_check(e)
     if firstTime:
         # Runs only for the first loop.
         # Reset key game values.
@@ -773,7 +844,7 @@ while isRunning:
         gameOver = False
         firstLClick = True
         firstRClick = True
-        waitTime = 3000
+        waitTime = 2000
         # first Lclick (mouse_LClick()) to generate mines,
         # get_randNodes() & mine_count().
         # first Rclick (mouse_RClick()) to stop drawing
@@ -803,17 +874,29 @@ while isRunning:
             # Draw game-over images and messages.
             draw_end(imgBlack, imgLoss, imgLoss1, imgClock,
                      imgCup)
+            # Update the screen.
+            screen.flip()
     # If all mines are found.
     elif (len(nodes)-len(LclickedCell)) == mine_tot:
         gameOver = True
         # Update screen.
         screen.flip()
+        # Saving result & getting the best score.
+        best_score = save_result()
         # wait for sometime in milisecs.
         pygame.time.wait(waitTime)
         while gameOver:
             # Draw game-over images and messages.
             draw_end(imgBlack, imgWin, imgWin1, imgClock,
                      imgCup)
+            # Drawing current score
+            # (1 is drawing position factor).
+            draw_result(time_current, 1)
+            # Drawing best score
+            # (-1 is drawing position factor).
+            draw_result(best_score, -1)
+            # Update the screen.
+            screen.flip()
     # Update screen.
     screen.flip()
     # Running the loop at specific FPS.

@@ -1,9 +1,11 @@
 import os
+import sys
 import ctypes
 import random
 import csv
 import pygame
 import pandas
+from Classes import Mode
 
 pygame.init()
 
@@ -50,6 +52,21 @@ imgWin1 = pygame.image.load(
     "game assets/PA-bg.png").convert_alpha()
 imgCup = pygame.image.load(
     "game assets/Cup.png").convert_alpha()
+imgList = pygame.image.load(
+    "game assets/List.png").convert_alpha()
+imgEasy = pygame.image.load(
+    "game assets/List-easy.png").convert_alpha()
+imgMedium = pygame.image.load(
+    "game assets/List-medium.png").convert_alpha()
+imgHard = pygame.image.load(
+    "game assets/List-hard.png").convert_alpha()
+imgTick = pygame.image.load(
+    "game assets/List-tick.png").convert_alpha()
+rectModeImg = None
+drawModeList = 0
+hoverList = False
+rectHoverImg = None
+rectListImg = None
 
 # Setting display icon.
 screen.set_icon(imgMine)
@@ -60,6 +77,13 @@ GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+
+# Initializing game modes.
+easy = Mode("Easy", imgEasy)
+medium = Mode("Medium", imgMedium)
+hard = Mode("Hard", imgHard)
+mode_list = (easy, medium, hard)
+index_mode = 0
 
 # For easy game mode.
 # Limiting unit rectangle arm. Height & width percentage.
@@ -279,7 +303,7 @@ def draw_field():
         )
         # (rect_arm+1): '1' added to remove pixel gap.
         # Cell color change when mouse hovering.
-        if (i == mi) and (not gameOver):
+        if (i == mi) and (not gameOver) and (not hoverList):
             pygame.draw.rect(screenSurface,
                              pygame.Color(rect_color[2]),
                              (rect_locx[i], rect_locy[i],
@@ -311,8 +335,9 @@ def draw_hiddenField():
                          (rect_color[color_opt]),
                          (rect_locx[i], rect_locy[i],
                           (rect_arm+1), (rect_arm+1)))
+        # Cell color change when mouse hovering.
         if (i == mi) and (mine_num[i] != 0) and \
-                (not gameOver):
+                (not gameOver) and (not hoverList):
             pygame.draw.rect(screenSurface, pygame.Color
                              (rect_color[2]),
                              (rect_locx[i], rect_locy[i],
@@ -341,7 +366,8 @@ def mouse_RClick():
         i = mouse_index()
         # Here, "i = None" means clicked outside the field.
         # Checking for non-outside & non-left Click.
-        if (i is not None) and (i not in LclickedCell):
+        if (i is not None) and (i not in LclickedCell) and \
+                (not hoverList):
             # First Rclick operation to stop drawing
             # game controls' image.
             if firstRClick:
@@ -432,15 +458,17 @@ def draw_time(t_init, banner_h):
 def mouse_LClick():
     # Left click operations.
     # Overwriting global variable, LclickedCell,
-    # firstLClick, time_init.
+    # firstLClick, time_init, drawModeList.
     # These Lclick operations valid when not game over.
-    global firstLClick, time_init, mine_clicked
+    global firstLClick, time_init, mine_clicked, drawModeList,\
+        index_mode, hoverList
     if not gameOver:
         # Nodal (mine field) index value assignment.
         i = mouse_index()
         # Here, "i = None" means clicked outside the field.
         # Checking for non-outside & non-right Click.
-        if (i is not None) and (i not in RclickedCell):
+        if (i is not None) and (i not in RclickedCell) and \
+                (not hoverList):
             # First Lclick operation to generate mines
             # and remove game controls' image.
             if firstLClick:
@@ -458,6 +486,104 @@ def mouse_LClick():
             elif (i not in LclickedCell) and \
                     (mine_num[i] != 0):
                 LclickedCell.append(i)
+        # Checking Lclick position for accessing game modes list.
+        # Lclick position.
+        x, y = pygame.mouse.get_pos()
+        # Setting valid position range.
+        x_min = rectModeImg[0]
+        x_max = rectModeImg[0] + rectModeImg[2]
+        y_min = rectModeImg[1]
+        y_max = rectModeImg[1] + rectModeImg[3]
+        # Checking Lclick position within valid range
+        # for accessing mode list.
+        if (x_min <= x <= x_max) and (y_min <= y <= y_max):
+            # List on/off every click on the selected mode.
+            drawModeList = (drawModeList+1) % 2
+        else:
+            # List off for all other clicks.
+            drawModeList = 0
+        if hoverList:
+            # Unused white gap (top & bottom) on the list
+            # and 1/3rd of effective list height.
+            fPosImg = (rectListImg[3]-rectHoverImg[3]*3)/2
+            h = rectHoverImg[3]
+            # When clicked on unused white gap, keeping list on.
+            drawModeList = 1
+            # Detecting clicking zone on the list for
+            # mode selection.
+            if (y_max+fPosImg) <= y < (y_max+fPosImg+h):
+                index_mode = 0
+                # Making hoverList & drawModeList false/off,
+                # after mode selection.
+                hoverList, drawModeList = False, 0
+            elif (y_max+fPosImg+h) <= y < (y_max+fPosImg+h*2):
+                index_mode = 1
+                # ""
+                hoverList, drawModeList = False, 0
+            elif (y_max+fPosImg+h*2) <= y <= (y_max+fPosImg+h*3):
+                index_mode = 2
+                # ""
+                hoverList, drawModeList = False, 0
+
+
+def draw_modeList():
+    # Draw mode list.
+    global hoverList
+    # Scaling image for the banner.
+    factor = imgList.get_width()/imgList.get_height()
+    image = pygame.transform.smoothscale(
+        imgList, (int(rect_arm*2*factor),
+                  int(rect_arm*2)))
+    imgRect = image.get_rect()
+    # Setting image top left.
+    imgRect.topleft = (
+        (rectModeImg[0]), (rectModeImg[1]+rectModeImg[3]))
+    # Draw image.
+    screenSurface.blit(image, imgRect)
+    rectImgList = imgRect
+    # Mouse position.
+    x, y = pygame.mouse.get_pos()
+    # Valid position range.
+    x_min = imgRect[0]
+    x_max = imgRect[0]+imgRect[2]
+    y_min = imgRect[1]
+    y_max = imgRect[1]+imgRect[3]
+    # Initializong hover area rect/dummy value.
+    rectImgHover = [0, 0, 0, 0]
+    # Detecting mouse hover within the range.
+    if (x_min <= x <= x_max) and (y_min <= y <= y_max):
+        # To activate/deactivate cell (underneath list) clicks.
+        hoverList = True
+        # Unused white gap (top & bottom) on the list
+        # and 1/3rd of effective list height.
+        fPosImg = imgRect[3]/15
+        h = (imgRect[3]-fPosImg*2)/3
+        # Scaling image and setting alpha.
+        imgHover = pygame.transform.smoothscale(
+            imgBlack, (int(imgRect[2]), int(h)))
+        alphaImg = 50
+        imgHover.set_alpha(alphaImg)
+        rectImgHover = imgHover.get_rect()
+        # Detecting hovering zone on the list.
+        if (y_min+fPosImg) <= y < (y_min+fPosImg+h):
+            # Setting image top left.
+            rectImgHover.topleft = (
+                imgRect[0], (imgRect[1]+fPosImg))
+            screenSurface.blit(imgHover, rectImgHover)
+        elif (y_min+fPosImg+h) <= y < (y_min+fPosImg+h*2):
+            # Setting image top left.
+            rectImgHover.topleft = (
+                imgRect[0], (imgRect[1]+fPosImg+h))
+            screenSurface.blit(imgHover, rectImgHover)
+        elif (y_min+fPosImg+h*2) <= y <= (y_min+fPosImg+h*3):
+            # Setting image top left.
+            rectImgHover.topleft = (
+                imgRect[0], (imgRect[1]+fPosImg+h*2))
+            screenSurface.blit(imgHover, rectImgHover)
+    else:
+        # To activate/deactivate cell (underneath list) clicks.
+        hoverList = False
+    return rectImgHover, rectImgList
 
 
 def mouse_index():
@@ -571,6 +697,7 @@ def draw_cross(image):
 
 def draw_banner(img_banner, img_flag, img_clock, t_init):
     # Draw banner, border, flag count, flag.
+    global rectModeImg
     # Scaling image to the field.
     img_banner = pygame.transform.smoothscale(
         img_banner, (int(rect_numx*rect_arm),
@@ -592,6 +719,8 @@ def draw_banner(img_banner, img_flag, img_clock, t_init):
     draw_flag(img_flag, img_h)
     # Draw clock.
     draw_clock(img_clock, img_h, t_init)
+    # Draw selected mode and get its rect.
+    rectModeImg = mode_list[index_mode].draw_selected(img_h)
 
 
 def draw_control(img_lclick, img_rclick, img_black):
@@ -725,6 +854,7 @@ def event_check(event):
 
 def draw_multiple():
     # Calling multiple common draw functions.
+    global rectHoverImg, rectListImg
     # Draw top-level field.
     draw_field()
     # Draw lower-level field when clicked.
@@ -737,6 +867,9 @@ def draw_multiple():
     draw_mines(imgMine)
     # Drawing banner and border (calling position important).
     draw_banner(imgBanner, imgFlag, imgClock, time_init)
+    # Drawing mode list and getting its rect.
+    if drawModeList:
+        rectHoverImg, rectListImg = draw_modeList()
 
 
 def draw_result(score, x):
@@ -836,8 +969,8 @@ while isRunning:
         # Getting nodal points of the main rectangle.
         get_nodes()
         # Initializing clicked cell's nodal index.
-        # Initializing mine_clicked, firstLClick
-        # & gameOver state.
+        # Initializing mine_clicked, firstLClick,
+        # firstRClick, waitTime & gameOver state.
         LclickedCell = []
         RclickedCell = []
         mine_clicked = False
@@ -903,3 +1036,4 @@ while isRunning:
     pygame.time.Clock().tick(30)
 
 pygame.quit()
+sys.exit(0)

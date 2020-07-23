@@ -62,11 +62,10 @@ imgHard = pygame.image.load(
     "game assets/List-hard.png").convert_alpha()
 imgTick = pygame.image.load(
     "game assets/List-tick.png").convert_alpha()
-rectModeImg = None
+rectModeImg = [0, 0, 0, 0]
 drawModeList = 0
 hoverList = False
-rectHoverImg = None
-rectListImg = None
+rectListImg = [0, 0, 0, 0]
 
 # Setting display icon.
 screen.set_icon(imgMine)
@@ -79,20 +78,23 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 
 # Initializing game modes.
-easy = Mode("Easy", imgEasy)
-medium = Mode("Medium", imgMedium)
-hard = Mode("Hard", imgHard)
+easy = Mode("Easy", imgEasy, 10, 10, 8, 0.6, 0.6)
+medium = Mode("Medium", imgMedium, 40, 18, 14, 0.7, 0.7)
+hard = Mode("Hard", imgHard, 99, 24, 20, 0.8, 0.8)
 mode_list = (easy, medium, hard)
 index_mode = 0
 
 # For easy game mode.
 # Limiting unit rectangle arm. Height & width percentage.
-minRectArm = 30
-hgtPerc, wdthPerc = 0.6, 0.8
-# Total mines (easy mode).
-mine_tot = 10
+minRectArm = 0.03*min(screenWidth, screenHeight)
+wdthPerc, hgtPerc = mode_list[index_mode].wdthPerc,\
+    mode_list[index_mode].hgtPerc
+# Total mines.
+mine_tot = mode_list[index_mode].mine_tot
 # Unit arm length and rectangle numbers in row and column.
-rect_num = (rect_numx, rect_numy) = (10, 8)
+rect_num = (rect_numx, rect_numy)\
+    = (mode_list[index_mode].rect_numx,
+       mode_list[index_mode].rect_numy)
 rect_arm = max(min((screenHeight*hgtPerc/rect_numy),
                    (screenWidth*wdthPerc/rect_numx)),
                minRectArm)
@@ -367,7 +369,7 @@ def mouse_RClick():
         # Here, "i = None" means clicked outside the field.
         # Checking for non-outside & non-left Click.
         if (i is not None) and (i not in LclickedCell) and \
-                (not hoverList):
+                (not hoverList) and (not drawModeList):
             # First Rclick operation to stop drawing
             # game controls' image.
             if firstRClick:
@@ -468,7 +470,7 @@ def mouse_LClick():
         # Here, "i = None" means clicked outside the field.
         # Checking for non-outside & non-right Click.
         if (i is not None) and (i not in RclickedCell) and \
-                (not hoverList):
+                (not hoverList) and (not drawModeList):
             # First Lclick operation to generate mines
             # and remove game controls' image.
             if firstLClick:
@@ -494,36 +496,56 @@ def mouse_LClick():
         x_max = rectModeImg[0] + rectModeImg[2]
         y_min = rectModeImg[1]
         y_max = rectModeImg[1] + rectModeImg[3]
+        # Unused white gap (top & bottom) on the list
+        # and 1/3rd of effective list height. (used in 2
+        # places to make compatible with windows touch.)
+        fPosImg = rectListImg[3]/15
+        h = (rectListImg[3]-fPosImg*2)/3
+        # Selecting a game mode.
+        if drawModeList:
+            # When clicked on unused white gap, keeping list on.
+            drawModeList = 1
+            # Detecting clicking zone on the list for
+            # mode selection.
+            if (rectListImg[0] <= x <=
+                    (rectListImg[0]+rectListImg[2])):
+                if (y_max+fPosImg) <= y < (y_max+fPosImg+h):
+                    # If already selected, ignore.
+                    if index_mode != 0:
+                        game_reset()
+                        index_mode = 0
+                    # Making hoverList & drawModeList false/off,
+                    # after mode selection.
+                    hoverList, drawModeList = False, 0
+                elif (y_max+fPosImg+h) <= y < (y_max+fPosImg+h*2):
+                    # ""
+                    if index_mode != 1:
+                        game_reset()
+                        index_mode = 1
+                    # ""
+                    hoverList, drawModeList = False, 0
+                elif (y_max+fPosImg+h*2) <= y <= \
+                        (y_max+fPosImg+h*3):
+                    # ""
+                    if index_mode != 2:
+                        game_reset()
+                        index_mode = 2
+                    # ""
+                    hoverList, drawModeList = False, 0
         # Checking Lclick position within valid range
         # for accessing mode list.
         if (x_min <= x <= x_max) and (y_min <= y <= y_max):
             # List on/off every click on the selected mode.
             drawModeList = (drawModeList+1) % 2
+        elif (rectListImg[0] <= x <=
+              (rectListImg[0]+rectListImg[2])) and \
+            ((y_max < y < (y_max+fPosImg)) or
+             ((y_max+fPosImg+h*3) < y < (y_max+fPosImg*2+h*3))):
+            # List on for click on unused white space.
+            drawModeList = 1
         else:
             # List off for all other clicks.
             drawModeList = 0
-        if hoverList:
-            # Unused white gap (top & bottom) on the list
-            # and 1/3rd of effective list height.
-            fPosImg = (rectListImg[3]-rectHoverImg[3]*3)/2
-            h = rectHoverImg[3]
-            # When clicked on unused white gap, keeping list on.
-            drawModeList = 1
-            # Detecting clicking zone on the list for
-            # mode selection.
-            if (y_max+fPosImg) <= y < (y_max+fPosImg+h):
-                index_mode = 0
-                # Making hoverList & drawModeList false/off,
-                # after mode selection.
-                hoverList, drawModeList = False, 0
-            elif (y_max+fPosImg+h) <= y < (y_max+fPosImg+h*2):
-                index_mode = 1
-                # ""
-                hoverList, drawModeList = False, 0
-            elif (y_max+fPosImg+h*2) <= y <= (y_max+fPosImg+h*3):
-                index_mode = 2
-                # ""
-                hoverList, drawModeList = False, 0
 
 
 def draw_modeList():
@@ -555,7 +577,8 @@ def draw_modeList():
         # To activate/deactivate cell (underneath list) clicks.
         hoverList = True
         # Unused white gap (top & bottom) on the list
-        # and 1/3rd of effective list height.
+        # and 1/3rd of effective list height. (used in 2 places
+        # to make compatible with windows touch.)
         fPosImg = imgRect[3]/15
         h = (imgRect[3]-fPosImg*2)/3
         # Scaling image and setting alpha.
@@ -583,7 +606,7 @@ def draw_modeList():
     else:
         # To activate/deactivate cell (underneath list) clicks.
         hoverList = False
-    return rectImgHover, rectImgList
+    return rectImgList
 
 
 def mouse_index():
@@ -709,10 +732,11 @@ def draw_banner(img_banner, img_flag, img_clock, t_init):
     # Draw a white border around the field and the banner
     # to keep the borders smooth.
     # Plus '1' to cover pixel gap.
+    # Plus '10' to leave pixel gap at the field bottom.
     pygame.draw.rect(screenSurface, WHITE,
                      (nodes[0][0], (nodes[0][1]-img_h),
                       ((rect_arm*rect_numx)+1),
-                      ((rect_arm*rect_numy)+img_h)), 2)
+                      ((rect_arm*rect_numy)+img_h+10)), 2)
     # Draw flag count.
     flag_count(img_h)
     # Draw flags.
@@ -750,45 +774,54 @@ def draw_control(img_lclick, img_rclick, img_black):
     screenSurface.blit(images[i], imgLC_rect)
 
 
-def draw_end(img_black, img1, img2, img_clock,
+def draw_end(img_black, img_WinLoss, img_WinLoss1, img_clock,
              img_cup):
     # Draw game-over images and messages.
     # Filling screen with color. Updating screen.
     screenSurface.fill(WHITE)
     # Calling multiple common draw functions.
     draw_multiple()
-    # Setting image dimensions and alpha.
-    imgDim = int(rect_numx*rect_arm*0.5)
+    # Setting image dimensions' factors and alpha.
+    f_dimx = int(rect_numx*rect_arm*0.5)
+    f_dimy = int(rect_numy*rect_arm)
     imgAlpha = 175
     # Scaling image to the field.
     img_black = pygame.transform.smoothscale(
         img_black, (wndwWidth, wndwHeight))
-    img1 = pygame.transform.smoothscale(
-        img1, (imgDim, int(imgDim*0.20)))
-    img2 = pygame.transform.smoothscale(
-        img2, (imgDim, int(imgDim*0.75)))
+    # "Play Again"/"Try Again" - image & background image.
+    img_WinLoss1 = pygame.transform.smoothscale(
+        img_WinLoss1, (f_dimx,
+                       int(f_dimx*(img_WinLoss1.get_height() /
+                                   img_WinLoss1.get_width()))))
+    img_WinLoss = pygame.transform.smoothscale(
+        img_WinLoss, (f_dimx,
+                      int(f_dimx*(img_WinLoss.get_height() /
+                                  img_WinLoss.get_width()))))
     img_clock = pygame.transform.smoothscale(
-        img_clock, (int(imgDim/5), int(imgDim/5)))
+        img_clock, (int(f_dimx/5), int(f_dimx/5)))
     img_cup = pygame.transform.smoothscale(
-        img_cup, (int(imgDim*0.8/5), int(imgDim*1.20*0.8/5)))
+        img_cup, (int(f_dimx*0.8/5),
+                  int(f_dimx*0.8*(img_cup.get_height() /
+                                  img_cup.get_width())/5)))
     # Setting image alpha.
     img_black.set_alpha(imgAlpha)
     # Drawing images.
-    rectImg1 = img1.get_rect()
-    rectImg2 = img2.get_rect()
+    rectWinLoss = img_WinLoss.get_rect()
+    rectWinLoss1 = img_WinLoss1.get_rect()
     rectImg_clock = img_clock.get_rect()
     rectImg_cup = img_cup.get_rect()
-    rectImg1.center = (wndwCenter[0],
-                       (wndwCenter[1]+1.5*rect_arm))
-    rectImg2.center = (wndwCenter[0],
-                       (wndwCenter[1]-rect_arm))
-    rectImg_clock.center = ((wndwCenter[0]-rect_arm*1.1),
-                            (wndwCenter[1]-rect_arm*2.1))
-    rectImg_cup.center = ((wndwCenter[0]+rect_arm*1.1),
-                          (wndwCenter[1]-rect_arm*2.1))
+    rectWinLoss.center = (wndwCenter[0],
+                          (wndwCenter[1]+0.25*f_dimy))
+    rectWinLoss1.center = (
+        wndwCenter[0],
+        (rectWinLoss[1]-f_dimy/25-img_WinLoss1.get_height()/2))
+    rectImg_clock.center = ((wndwCenter[0]-f_dimx/4.5),
+                            (wndwCenter[1]-f_dimy/5))
+    rectImg_cup.center = ((wndwCenter[0]+f_dimx/4.5),
+                          (wndwCenter[1]-f_dimy/5))
     screenSurface.blit(img_black, img_black.get_rect())
-    screenSurface.blit(img1, rectImg1)
-    screenSurface.blit(img2, rectImg2)
+    screenSurface.blit(img_WinLoss, rectWinLoss)
+    screenSurface.blit(img_WinLoss1, rectWinLoss1)
     screenSurface.blit(img_clock, rectImg_clock)
     screenSurface.blit(img_cup, rectImg_cup)
     # Handle events (it's IMPORTANT to check them
@@ -807,10 +840,10 @@ def draw_end(img_black, img1, img2, img_clock,
         # Lclick position.
         x, y = pygame.mouse.get_pos()
         # Setting valid position range for game reset.
-        x_min = rectImg1[0]
-        x_max = rectImg1[0] + rectImg1[2]
-        y_min = rectImg1[1]
-        y_max = rectImg1[1] + rectImg1[3]
+        x_min = rectWinLoss[0]
+        x_max = rectWinLoss[0] + rectWinLoss[2]
+        y_min = rectWinLoss[1]
+        y_max = rectWinLoss[1] + rectWinLoss[3]
         # Checking Lclick position within valid range
         # for game reset.
         if (x_min <= x <= x_max) and (y_min <= y <= y_max):
@@ -854,7 +887,7 @@ def event_check(event):
 
 def draw_multiple():
     # Calling multiple common draw functions.
-    global rectHoverImg, rectListImg
+    global rectListImg
     # Draw top-level field.
     draw_field()
     # Draw lower-level field when clicked.
@@ -869,22 +902,25 @@ def draw_multiple():
     draw_banner(imgBanner, imgFlag, imgClock, time_init)
     # Drawing mode list and getting its rect.
     if drawModeList:
-        rectHoverImg, rectListImg = draw_modeList()
+        rectListImg = draw_modeList()
 
 
-def draw_result(score, x):
+def draw_result(score, pos_mirrFac):
     # Drawing result.
     # Setting font & font color.
-    # font size adjustable with window size.
-    fontSize = round(rect_arm*0.50)
+    # Font size adjustable with window size.
+    # Setting dimension/position factors.
+    f_dimx = int(rect_numx*rect_arm*0.5)
+    f_dimy = int(rect_numy*rect_arm)
+    fontSize = round(f_dimx*0.1)
     numFont = pygame.font.SysFont("Arial", fontSize, True)
     numColor = WHITE
     # Getting text surface and rectangle.
     textSurf, textRect = text_object(
         str(score).zfill(3), numFont, numColor)
     # Setting text rectangle's center.
-    textRect.center = ((wndwCenter[0]-rect_arm*1.1*x),
-                       (wndwCenter[1]-rect_arm*1.1))
+    textRect.center = ((wndwCenter[0]-f_dimx*pos_mirrFac/4.5),
+                       (wndwCenter[1]-f_dimy/10))
     # Drawing text.
     screenSurface.blit(textSurf, textRect)
 
@@ -905,10 +941,11 @@ def save_result():
         df = pandas.read_csv(new_path)
     # pylint: disable = broad-except
     except Exception:
-        # Avoiding errors before csv file creation.
+        # Avoiding unnecessary errors before csv file creation.
         pass
     # Columns representing game modes.
-    columns = ("easy", "medium", "hard")
+    columns = (mode_list[0].name, mode_list[1].name,
+               mode_list[2].name)
     # If file doesn't exist.
     if not os.path.exists(new_path):
         # Creating a csv file (if not exists).
@@ -919,24 +956,37 @@ def save_result():
         writer.writeheader()
     # Opening the csv file for appending operation.
     f = open(new_path, "a+")
+    row = []
     # When csv file just created i.e. first time.
     if df is None:
         # First time.
         best_scr = time_current
         # Adding row to the file; time_max as dummy value.
-        row = (time_current, time_max, time_max)
+        for mode in mode_list:
+            # For current mode, add current time.
+            if mode == mode_list[index_mode]:
+                row.append(time_current)
+            # Else add dummy value (max time).
+            else:
+                row.append(time_max)
         writer = csv.writer(f, lineterminator="\n")
         writer.writerow(row)
     # When csv file already existed.
     else:
         # Adding value to the file if not existed.
-        if time_current not in list(df[columns[0]]):
+        if time_current not in list(df[columns[index_mode]]):
             # Adding row to the file; time_max as dummy value.
-            row = (time_current, time_max, time_max)
+            for mode in mode_list:
+                # For current mode, add current time.
+                if mode == mode_list[index_mode]:
+                    row.append(time_current)
+                # Else add dummy value (max time).
+                else:
+                    row.append(time_max)
             writer = csv.writer(f, lineterminator="\n")
             writer.writerow(row)
         # Finding best score for a game mode.
-        list_best = min(list(df["easy"]))
+        list_best = min(list(df[columns[index_mode]]))
         best_scr = list_best if (list_best < time_current) \
             else time_current
     f.close()
@@ -966,6 +1016,23 @@ while isRunning:
     if firstTime:
         # Runs only for the first loop.
         # Reset key game values.
+        wdthPerc, hgtPerc = mode_list[index_mode].wdthPerc,\
+            mode_list[index_mode].hgtPerc
+        mine_tot = mode_list[index_mode].mine_tot
+        rect_num = (rect_numx, rect_numy)\
+            = (mode_list[index_mode].rect_numx,
+               mode_list[index_mode].rect_numy)
+        rect_arm = max(min((wndwHeight*hgtPerc/rect_numy),
+                           (wndwWidth*wdthPerc/rect_numx)),
+                       minRectArm)
+        minWndwWidth = (minRectArm*rect_numx)/wdthPerc
+        minWndwHeight = (minRectArm*rect_numy)/hgtPerc
+        # Limiting minimum window size.
+        if wndwWidth < minWndwWidth:
+            wndwWidth = int(round(minWndwWidth, 0))
+        if wndwHeight < minWndwHeight:
+            wndwHeight = int(round(minWndwHeight, 0))
+        wndwSize = wndwWidth, wndwHeight
         # Getting nodal points of the main rectangle.
         get_nodes()
         # Initializing clicked cell's nodal index.
@@ -986,6 +1053,8 @@ while isRunning:
         mine_num = [0]*(rect_numx*rect_numy)
         firstTime = False
         print("One time")
+        screenSurface = screen.set_mode(wndwSize,
+                                        pygame.RESIZABLE)
     # Filling screen with color. Updating screen.
     screenSurface.fill(WHITE)
     # Calling multiple common draw functions.
@@ -1003,6 +1072,10 @@ while isRunning:
         screen.flip()
         # wait for sometime in milisecs.
         pygame.time.wait(waitTime)
+        # Making a dummy event to solve touch-input
+        # issue with continuing to gameOver loop.
+        pygame.event.post(
+            pygame.event.Event(pygame.USEREVENT, attr="Dummy"))
         while gameOver:
             # Draw game-over images and messages.
             draw_end(imgBlack, imgLoss, imgLoss1, imgClock,
@@ -1018,6 +1091,10 @@ while isRunning:
         best_score = save_result()
         # wait for sometime in milisecs.
         pygame.time.wait(waitTime)
+        # Making a dummy event to solve touch-input
+        # issue with continuing to gameOver loop.
+        pygame.event.post(
+            pygame.event.Event(pygame.USEREVENT, attr="Dummy"))
         while gameOver:
             # Draw game-over images and messages.
             draw_end(imgBlack, imgWin, imgWin1, imgClock,

@@ -2,9 +2,15 @@ import pygame
 
 
 class Mode:
-    def __init__(self, name, image):
+    def __init__(self, name, image, mine_tot, rect_numx,
+                 rect_numy, wdthPerc, hgtPerc):
         self.name = name
         self.image = image
+        self.mine_tot = mine_tot
+        self.rect_numx = rect_numx
+        self.rect_numy = rect_numy
+        self.wdthPerc = wdthPerc
+        self.hgtPerc = hgtPerc
         self.factor = image.get_width()/image.get_height()
 
     def draw_selected(self, banner_h):

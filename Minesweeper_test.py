@@ -923,10 +923,10 @@ try:
 
     def save_result():
         # Saving result & returning the best score.
-        # File directory (current & new).
-        cur_path = os.getcwd()
-        new_path = os.path.join(
-            cur_path, "game assets", "score.csv")
+        # File directory (ProgramData & new).
+        data_path = r"C:\ProgramData"
+        new_path = os.path.join(data_path, "Minesweeper")
+        new_file = os.path.join(new_path, "score.csv")
         # No data-frame for pandas (before csv file creation).
         df = None
         # Pandas can't create data-frame for 'JUST' created
@@ -934,7 +934,7 @@ try:
         # when csv file already existed.
         try:
             # Data-frame for pandas (when csv file existed).
-            df = pandas.read_csv(new_path)
+            df = pandas.read_csv(new_file)
         # pylint: disable = broad-except
         except Exception:
             # Avoiding unnecessary errors before csv file creation.
@@ -943,15 +943,20 @@ try:
         columns = (mode_list[0].name, mode_list[1].name,
                    mode_list[2].name)
         # If file doesn't exist.
-        if not os.path.exists(new_path):
+        if not os.path.exists(new_file):
+            # Create target Directory
+            try:
+                os.mkdir(new_path)
+            except FileExistsError:
+                pass
             # Creating a csv file (if not exists).
-            f = open(new_path, "a+")
+            f = open(new_file, "a+")
             # Creating the column headers.
             writer = csv.DictWriter(
                 f, columns, lineterminator="\n")
             writer.writeheader()
         # Opening the csv file for appending operation.
-        f = open(new_path, "a+")
+        f = open(new_file, "a+")
         row = []
         # When csv file just created i.e. first time.
         if df is None:

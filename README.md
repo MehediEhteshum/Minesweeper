@@ -2,6 +2,8 @@
 - Tools: `Python (Pygame, Pandas), VS Code`
 - Installation password: `MehediMinesweeper`
 
+![Minesweeper](https://github.com/MehediEhteshum/Minesweeper/blob/master/screenshots/Screenshot%202023-09-25%20205326.png)
+
 ## Installation
 Just download the `setup_minesweeper.exe`.<br>
 Your PC might consider it as a potential threat, because you're downloading an executable file from an unknown source.<br>

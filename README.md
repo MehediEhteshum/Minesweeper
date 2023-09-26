@@ -2,7 +2,7 @@
 - Tools: `Python (Pygame, Pandas), VS Code`
 - Installation password: `MehediMinesweeper`
 
-![Minesweeper](https://github.com/MehediEhteshum/Minesweeper/blob/master/screenshots/Screenshot%202023-09-25%20205326.png)
+![Minesweeper](https://github.com/MehediEhteshum/Minesweeper/blob/master/screenshots/Screenshot%202023-09-25%20205738.png)
 
 ## Installation
 Just download the `setup_minesweeper.exe`.<br>
